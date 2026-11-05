@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" fill="none">
+  <rect width="1200" height="700" fill="#E7F0E9"/>
+  <rect x="88" y="87" width="1024" height="526" rx="8" fill="#F9FBF9"/>
+  <rect x="124" y="123" width="337" height="453" rx="6" fill="#202522"/>
+  <text x="159" y="169" fill="#B9C6BD" font-family="monospace" font-size="15" letter-spacing="1">MONTHLY BUDGET</text>
+  <text x="159" y="262" fill="#FFFFFF" font-family="sans-serif" font-size="70" font-weight="600">¥20</text>
+  <text x="161" y="295" fill="#93A39A" font-family="monospace" font-size="13">APPLICATION ESTIMATE</text>
+  <rect x="160" y="341" width="227" height="12" rx="6" fill="#4B5750"/>
+  <rect x="160" y="341" width="144" height="12" rx="6" fill="#C9DC75"/>
+  <circle cx="306" cy="347" r="12" fill="#DB644F" stroke="#202522" stroke-width="3"/>
+  <text x="160" y="385" fill="#C8D4CB" font-family="monospace" font-size="12">CURRENT RESERVE</text>
+  <rect x="160" y="431" width="229" height="1" fill="#4A554E"/>
+  <circle cx="170" cy="474" r="6" fill="#C9DC75"/>
+  <text x="190" y="479" fill="#DAE2DC" font-family="sans-serif" font-size="15">预留</text>
+  <circle cx="270" cy="474" r="6" fill="#4D76A9"/>
+  <text x="290" y="479" fill="#DAE2DC" font-family="sans-serif" font-size="15">结算</text>
+  <circle cx="370" cy="474" r="6" fill="#DB644F"/>
+  <text x="390" y="479" fill="#DAE2DC" font-family="sans-serif" font-size="15">告警</text>
+  <rect x="503" y="150" width="252" height="158" rx="6" fill="#E8EDF5"/>
+  <circle cx="561" cy="207" r="18" fill="#4D76A9"/>
+  <path d="M555 207H567M561 201V213" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <rect x="595" y="195" width="119" height="8" rx="4" fill="#7B8EA9"/>
+  <rect x="595" y="216" width="91" height="7" rx="3.5" fill="#C0CAD8"/>
+  <rect x="530" y="258" width="196" height="27" rx="4" fill="#4D76A9"/>
+  <text x="557" y="277" fill="white" font-family="sans-serif" font-size="12">请求前预留额度</text>
+  <path d="M754 229H803" stroke="#548878" stroke-width="4" stroke-dasharray="7 8"/>
+  <circle cx="778" cy="229" r="8" fill="#C9DC75" stroke="#548878" stroke-width="2"/>
+  <rect x="803" y="150" width="265" height="158" rx="6" fill="#E4F0E8"/>
+  <circle cx="861" cy="207" r="18" fill="#548878"/>
+  <path d="M852 208L858 214L870 200" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="894" y="195" width="130" height="8" rx="4" fill="#6F9886"/>
+  <rect x="894" y="216" width="103" height="7" rx="3.5" fill="#B9D2C2"/>
+  <rect x="830" y="258" width="210" height="27" rx="4" fill="#548878"/>
+  <text x="875" y="277" fill="white" font-family="sans-serif" font-size="12">按用量结算</text>
+  <rect x="503" y="350" width="565" height="185" rx="6" fill="#FFFFFF" stroke="#DDE6DF" stroke-width="2"/>
+  <path d="M545 483H1023" stroke="#E2E8E3" stroke-width="2"/>
+  <path d="M545 438H1023M545 393H1023" stroke="#EEF1EE" stroke-width="2"/>
+  <path d="M556 464L636 441L714 452L791 407L870 425L946 385L1010 399" stroke="#548878" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="946" cy="385" r="8" fill="#DB644F"/>
+  <text x="541" y="563" fill="#7A887F" font-family="monospace" font-size="14" letter-spacing="1">RESERVE  →  CALL  →  SETTLE</text>
+</svg>

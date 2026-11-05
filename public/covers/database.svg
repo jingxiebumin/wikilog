@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" fill="none">
+  <rect width="1200" height="700" fill="#EEF0E8"/>
+  <rect x="93" y="97" width="448" height="504" rx="8" fill="#E2E6DA"/>
+  <ellipse cx="317" cy="184" rx="142" ry="47" fill="#548878"/>
+  <path d="M175 184V453C175 479 239 500 317 500C395 500 459 479 459 453V184" fill="#76A08F"/>
+  <path d="M175 272C175 298 239 319 317 319C395 319 459 298 459 272M175 363C175 389 239 410 317 410C395 410 459 389 459 363" stroke="#D8E8DD" stroke-width="3"/>
+  <ellipse cx="317" cy="453" rx="142" ry="47" stroke="#D8E8DD" stroke-width="3"/>
+  <ellipse cx="317" cy="184" rx="142" ry="47" stroke="#2E6150" stroke-width="3"/>
+  <circle cx="240" cy="184" r="7" fill="#C9DC75"/>
+  <circle cx="317" cy="184" r="7" fill="#DB644F"/>
+  <circle cx="394" cy="184" r="7" fill="#E8EDF5"/>
+  <path d="M541 337H667" stroke="#748475" stroke-width="3" stroke-dasharray="8 9"/>
+  <path d="M649 322L667 337L649 352" stroke="#748475" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="690" y="134" width="414" height="430" rx="7" fill="#FFFFFF" stroke="#DDE1D8" stroke-width="2"/>
+  <rect x="725" y="171" width="148" height="13" rx="6.5" fill="#39413D"/>
+  <rect x="725" y="206" width="343" height="7" rx="3.5" fill="#DEE2DB"/>
+  <rect x="725" y="227" width="298" height="7" rx="3.5" fill="#DEE2DB"/>
+  <rect x="725" y="271" width="343" height="72" rx="4" fill="#E4F0E8"/>
+  <rect x="750" y="291" width="75" height="8" rx="4" fill="#548878"/>
+  <rect x="750" y="312" width="272" height="7" rx="3.5" fill="#BDD2C3"/>
+  <rect x="725" y="367" width="343" height="72" rx="4" fill="#E8EDF5"/>
+  <rect x="750" y="387" width="108" height="8" rx="4" fill="#4D76A9"/>
+  <rect x="750" y="408" width="244" height="7" rx="3.5" fill="#C6D2E1"/>
+  <rect x="725" y="463" width="343" height="68" rx="4" fill="#F7E7E2"/>
+  <rect x="750" y="482" width="94" height="8" rx="4" fill="#DB644F"/>
+  <rect x="750" y="503" width="232" height="7" rx="3.5" fill="#E5C6BE"/>
+  <text x="93" y="650" fill="#6D766A" font-family="monospace" font-size="15" letter-spacing="1">ARTICLE  →  VERSION  →  PUBLISHED VIEW</text>
+</svg>

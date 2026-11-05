@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" fill="none">
+  <rect width="1200" height="700" fill="#F5EAE5"/>
+  <rect x="97" y="75" width="488" height="550" rx="7" fill="#EBCFC6"/>
+  <rect x="130" y="104" width="422" height="491" rx="4" fill="#FFFFFF"/>
+  <rect x="166" y="143" width="207" height="13" rx="6.5" fill="#DB644F"/>
+  <rect x="166" y="176" width="325" height="7" rx="3.5" fill="#E3D8D4"/>
+  <rect x="166" y="198" width="295" height="7" rx="3.5" fill="#E3D8D4"/>
+  <rect x="166" y="247" width="333" height="12" rx="6" fill="#39413D"/>
+  <rect x="166" y="279" width="321" height="7" rx="3.5" fill="#E3D8D4"/>
+  <rect x="166" y="300" width="301" height="7" rx="3.5" fill="#E3D8D4"/>
+  <rect x="166" y="321" width="327" height="7" rx="3.5" fill="#E3D8D4"/>
+  <rect x="166" y="370" width="330" height="99" rx="4" fill="#252D29"/>
+  <circle cx="188" cy="391" r="4" fill="#DB644F"/>
+  <circle cx="202" cy="391" r="4" fill="#C9DC75"/>
+  <circle cx="216" cy="391" r="4" fill="#4D76A9"/>
+  <path d="M190 426H286M190 446H370" stroke="#93B69F" stroke-width="5" stroke-linecap="round"/>
+  <rect x="166" y="494" width="320" height="7" rx="3.5" fill="#E3D8D4"/>
+  <rect x="166" y="515" width="271" height="7" rx="3.5" fill="#E3D8D4"/>
+  <path d="M664 166H1039" stroke="#C9A79D" stroke-width="2" stroke-dasharray="7 9"/>
+  <circle cx="664" cy="166" r="8" fill="#DB644F"/>
+  <rect x="664" y="195" width="417" height="95" rx="5" fill="#FFFFFF" stroke="#E8D8D3" stroke-width="2"/>
+  <rect x="695" y="222" width="77" height="9" rx="4.5" fill="#DB644F"/>
+  <rect x="695" y="245" width="321" height="7" rx="3.5" fill="#E5D8D3"/>
+  <rect x="664" y="323" width="417" height="95" rx="5" fill="#FFFFFF" stroke="#E8D8D3" stroke-width="2"/>
+  <rect x="695" y="350" width="99" height="9" rx="4.5" fill="#548878"/>
+  <rect x="695" y="373" width="285" height="7" rx="3.5" fill="#E5D8D3"/>
+  <rect x="664" y="451" width="417" height="95" rx="5" fill="#202522"/>
+  <rect x="695" y="479" width="111" height="9" rx="4.5" fill="#C9DC75"/>
+  <rect x="695" y="502" width="309" height="7" rx="3.5" fill="#66726A"/>
+  <path d="M873 290V321M873 418V449" stroke="#548878" stroke-width="3"/>
+  <text x="663" y="593" fill="#8A695F" font-family="monospace" font-size="15" letter-spacing="1">AUTHORING  /  VALIDATION  /  PUBLISHING</text>
+</svg>

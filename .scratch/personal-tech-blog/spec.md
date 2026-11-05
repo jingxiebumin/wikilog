@@ -72,7 +72,7 @@
 | 顺序 | Issue | 目标 | 依赖 |
 | --- | --- | --- | --- |
 | 1 | [01-runtime-pilot.md](./issues/01-runtime-pilot.md) | 验证部署、数据库、配图存储与持续成本 | 无 |
-| 2 | [02-public-blog.md](./issues/02-public-blog.md) | 上线可浏览的公开博客、搜索与文章展示 | 01 |
+| 2 | [02-public-blog.md](./issues/02-public-blog.md) | 本地可运行的公开博客初版、搜索与文章展示 | 本地初版无依赖；正式发版依赖 01、08 |
 | 3 | [03-email-provider.md](./issues/03-email-provider.md) | 验证免费邮件服务和账号邮件流程 | 无 |
 | 4 | [04-reader-accounts.md](./issues/04-reader-accounts.md) | 注册、登录、密码恢复和管理员权限 | 02、03 |
 | 5 | [05-article-admin.md](./issues/05-article-admin.md) | 管理页上传、预览、发布和下架 MDX 文章 | 01、04 |
@@ -82,4 +82,4 @@
 | 9 | [09-llm-wiki-evaluation.md](./issues/09-llm-wiki-evaluation.md) | 对比原文问答与 LLM Wiki | 07 |
 | 10 | [10-llm-wiki-adoption.md](./issues/10-llm-wiki-adoption.md) | 仅在评估通过且负责人批准后实现 Wiki | 09 |
 
-Issue 01、03 是验证任务；若某项门槛未通过，应记录结果并保留可独立发布的公开博客阶段，不得假定原供应商或预算门槛已通过。Issue 10 默认等待人工评审，不能因为评估任务结束而自动开始。
+Issue 01、03 是外部条件验证任务。Issue 01 不阻塞 Issue 02 的本地初版开发，但在公开发版前必须完成运行平台、数据库、配图持久化与持续成本验证；Issue 03 在账号功能开发前完成，未通过时保持账号功能关闭。若某项门槛未通过，应记录结果，不得假定原供应商或预算门槛已通过。Issue 10 默认等待人工评审，不能因为评估任务结束而自动开始。

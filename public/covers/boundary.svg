@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" fill="none">
+  <rect width="1200" height="700" fill="#E6EEE8"/>
+  <path d="M0 520H1200" stroke="#B6C8BA" stroke-width="2"/>
+  <path d="M0 562H1200" stroke="#C4D1C6" stroke-width="1"/>
+  <rect x="84" y="96" width="290" height="402" rx="8" fill="#D5E2D7"/>
+  <rect x="111" y="124" width="238" height="346" rx="5" fill="#FBFCFA"/>
+  <rect x="141" y="160" width="104" height="10" rx="5" fill="#DB644F"/>
+  <rect x="141" y="190" width="178" height="7" rx="3.5" fill="#D7DED8"/>
+  <rect x="141" y="211" width="148" height="7" rx="3.5" fill="#D7DED8"/>
+  <rect x="141" y="260" width="177" height="114" rx="4" fill="#E8EDF5"/>
+  <path d="M166 338L204 303L234 324L279 278" stroke="#4D76A9" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="279" cy="278" r="8" fill="#DB644F"/>
+  <rect x="141" y="401" width="65" height="23" rx="3" fill="#E4F0E8"/>
+  <rect x="218" y="401" width="86" height="23" rx="3" fill="#F7E7E2"/>
+  <path d="M375 298H485" stroke="#548878" stroke-width="4" stroke-dasharray="8 9"/>
+  <circle cx="431" cy="298" r="13" fill="#C9DC75" stroke="#548878" stroke-width="3"/>
+  <rect x="487" y="147" width="244" height="304" rx="7" fill="#202522"/>
+  <rect x="514" y="178" width="75" height="8" rx="4" fill="#C9DC75"/>
+  <rect x="514" y="208" width="152" height="7" rx="3.5" fill="#5E6B63"/>
+  <rect x="514" y="232" width="118" height="7" rx="3.5" fill="#5E6B63"/>
+  <rect x="514" y="284" width="181" height="84" rx="4" fill="#2B3630"/>
+  <path d="M539 316H594M539 339H661" stroke="#8DB5A1" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="701" cy="178" r="7" fill="#DB644F"/>
+  <path d="M731 298H829" stroke="#548878" stroke-width="4" stroke-dasharray="8 9"/>
+  <rect x="831" y="188" width="280" height="218" rx="7" fill="#F7E7E2"/>
+  <rect x="864" y="222" width="92" height="9" rx="4.5" fill="#DB644F"/>
+  <rect x="864" y="254" width="208" height="7" rx="3.5" fill="#E1BFB7"/>
+  <rect x="864" y="277" width="179" height="7" rx="3.5" fill="#E1BFB7"/>
+  <rect x="864" y="322" width="111" height="40" rx="4" fill="#DB644F"/>
+  <path d="M891 342L902 353L925 329" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="82" y="622" fill="#65736A" font-family="monospace" font-size="16" letter-spacing="1">PUBLIC VIEW  /  SERVER QUERY  /  PRIVATE STORE</text>
+  <circle cx="1065" cy="96" r="23" fill="#C9DC75"/>
+  <circle cx="1098" cy="96" r="7" fill="#DB644F"/>
+</svg>
