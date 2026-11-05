@@ -3,16 +3,17 @@ import Link from "next/link";
 import { ArrowUpRight, Search, SearchX } from "lucide-react";
 import { ArticleCard } from "@/components/article-card";
 import { SearchForm } from "@/components/search-form";
-import { searchArticles } from "@/lib/content";
+import { searchPublishedArticles } from "@/lib/public-content";
 
 export const metadata: Metadata = { title: "搜索" };
+export const dynamic = "force-dynamic";
 
 type SearchPageProps = { searchParams: Promise<{ q?: string | string[] }> };
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const params = await searchParams;
   const query = Array.isArray(params.q) ? params.q[0] ?? "" : params.q ?? "";
-  const results = searchArticles(query);
+  const results = await searchPublishedArticles(query);
 
   return (
     <div className="page search-page">

@@ -1,12 +1,19 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Clock3, MoveDownRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BookOpenText, Clock3, MoveDownRight } from "lucide-react";
 import { ArticleCard } from "@/components/article-card";
-import { getCategory, publishedArticles, categories, tagCatalog } from "@/lib/content";
+import { listCategories, listPublishedArticles, listTags } from "@/lib/public-content";
 
-export default function HomePage() {
-  const articles = publishedArticles();
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const [articles, categories, tags] = await Promise.all([
+    listPublishedArticles(),
+    listCategories(),
+    listTags(),
+  ]);
   const [featured, ...moreArticles] = articles;
+  const featuredCategory = categories.find((category) => category.slug === featured?.category);
 
   return (
     <div className="page home-page">
@@ -37,7 +44,7 @@ export default function HomePage() {
               </Link>
               <div className="featured-copy">
                 <div className="article-card-meta">
-                  <span className={`category-label tone-${getCategory(featured.category)?.tone ?? "blue"}`}>{getCategory(featured.category)?.name}</span>
+                  <span className={`category-label tone-${featuredCategory?.tone ?? "blue"}`}>{featuredCategory?.name ?? "未分类"}</span>
                   <time dateTime={featured.publishedAt}>{featured.publishedAt.replaceAll("-", ".")}</time>
                 </div>
                 <h3><Link href={`/articles/${featured.slug}`}>{featured.title}</Link></h3>
@@ -50,9 +57,19 @@ export default function HomePage() {
             </article>
           )}
 
-          <div className="article-grid">
-            {moreArticles.map((article) => <ArticleCard article={article} key={article.slug} />)}
-          </div>
+          {featured ? (
+            <div className="article-grid">
+              {moreArticles.map((article) => <ArticleCard article={article} key={article.slug} />)}
+            </div>
+          ) : (
+            <div className="home-empty-state">
+              <span className="home-empty-icon"><BookOpenText aria-hidden="true" size={19} strokeWidth={1.7} /></span>
+              <div>
+                <h3>还没有已发布的文章</h3>
+                <p>目前数据库中没有公开文章。添加并发布文章后，内容会显示在这里。</p>
+              </div>
+            </div>
+          )}
         </section>
 
         <aside className="home-aside">
@@ -84,7 +101,7 @@ export default function HomePage() {
             </div>
             <h2 id="tags-heading">最近在写</h2>
             <div className="tag-list">
-              {tagCatalog.filter((tag) => articles.some((article) => article.tags.includes(tag.slug))).slice(0, 7).map((tag) => (
+              {tags.filter((tag) => articles.some((article) => article.tags.includes(tag.slug))).slice(0, 7).map((tag) => (
                 <Link href={`/tags/${tag.slug}`} key={tag.slug}>#{tag.name}</Link>
               ))}
             </div>

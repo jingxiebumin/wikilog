@@ -4,25 +4,22 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { ArticleCard } from "@/components/article-card";
 import { EmptyState } from "@/components/empty-state";
-import { getTag, getTagArticles, tagCatalog } from "@/lib/content";
+import { getTagBySlug, listArticlesForTag } from "@/lib/public-content";
 
 type TagPageProps = { params: Promise<{ slug: string }> };
-
-export async function generateStaticParams() {
-  return tagCatalog.map(({ slug }) => ({ slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: TagPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const tag = getTag(slug);
+  const tag = await getTagBySlug(slug);
   return { title: tag?.name ?? "标签" };
 }
 
 export default async function TagPage({ params }: TagPageProps) {
   const { slug } = await params;
-  const tag = getTag(slug);
+  const tag = await getTagBySlug(slug);
   if (!tag) notFound();
-  const tagArticles = getTagArticles(slug);
+  const tagArticles = await listArticlesForTag(slug);
 
   return (
     <div className="page listing-page">

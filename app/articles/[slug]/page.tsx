@@ -5,27 +5,27 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, Clock3, Hash } from "lucide-react";
 import { ArticleBody } from "@/components/article-body";
 import { ArticleCard } from "@/components/article-card";
-import { getCategory, findPublishedArticle, publishedArticles } from "@/lib/content";
+import { getCategoryBySlug, getPublishedArticle, listPublishedArticles } from "@/lib/public-content";
 
 type ArticlePageProps = { params: Promise<{ slug: string }> };
-
-export async function generateStaticParams() {
-  return publishedArticles().map(({ slug }) => ({ slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: ArticlePageProps): Promise<Metadata> {
   const { slug } = await params;
-  const article = findPublishedArticle(slug);
+  const article = await getPublishedArticle(slug);
   return article ? { title: article.title, description: article.summary } : { title: "文章未找到" };
 }
 
 export default async function ArticlePage({ params }: ArticlePageProps) {
   const { slug } = await params;
-  const article = findPublishedArticle(slug);
+  const article = await getPublishedArticle(slug);
   if (!article) notFound();
 
-  const category = getCategory(article.category);
-  const relatedArticles = publishedArticles()
+  const [category, allArticles] = await Promise.all([
+    getCategoryBySlug(article.category),
+    listPublishedArticles(),
+  ]);
+  const relatedArticles = allArticles
     .filter((item) => item.slug !== article.slug && item.category === article.category)
     .slice(0, 2);
 

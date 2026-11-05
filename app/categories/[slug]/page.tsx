@@ -4,25 +4,22 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { ArticleCard } from "@/components/article-card";
 import { EmptyState } from "@/components/empty-state";
-import { categories, getCategory, getCategoryArticles } from "@/lib/content";
+import { getCategoryBySlug, listArticlesForCategory } from "@/lib/public-content";
 
 type CategoryPageProps = { params: Promise<{ slug: string }> };
-
-export async function generateStaticParams() {
-  return categories.map(({ slug }) => ({ slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const category = getCategory(slug);
+  const category = await getCategoryBySlug(slug);
   return { title: category?.name ?? "分类" };
 }
 
 export default async function CategoryPage({ params }: CategoryPageProps) {
   const { slug } = await params;
-  const category = getCategory(slug);
+  const category = await getCategoryBySlug(slug);
   if (!category) notFound();
-  const categoryArticles = getCategoryArticles(slug);
+  const categoryArticles = await listArticlesForCategory(slug);
 
   return (
     <div className="page listing-page">

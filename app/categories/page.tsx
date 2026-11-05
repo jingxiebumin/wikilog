@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { categories, getCategoryArticles } from "@/lib/content";
+import { listCategories, listPublishedArticles } from "@/lib/public-content";
 
 export const metadata: Metadata = { title: "主题分类" };
+export const dynamic = "force-dynamic";
 
-export default function CategoriesPage() {
+export default async function CategoriesPage() {
+  const [categories, articles] = await Promise.all([listCategories(), listPublishedArticles()]);
   return (
     <div className="page index-page">
       <div className="page-heading">
@@ -15,7 +17,7 @@ export default function CategoriesPage() {
       </div>
       <div className="category-directory">
         {categories.map((category, index) => {
-          const count = getCategoryArticles(category.slug).length;
+          const count = articles.filter((article) => article.category === category.slug).length;
           return (
             <Link className="category-directory-row" href={`/categories/${category.slug}`} key={category.slug}>
               <span className={`directory-index tone-${category.tone}`}>{String(index + 1).padStart(2, "0")}</span>

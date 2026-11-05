@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: wikilog
+      POSTGRES_USER: wikilog
+      POSTGRES_PASSWORD: wikilog_local_only
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - wikilog-postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wikilog -d wikilog"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  wikilog-postgres-data:

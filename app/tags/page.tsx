@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight, Hash } from "lucide-react";
-import { getTagArticles, tagCatalog } from "@/lib/content";
+import { listPublishedArticles, listTags } from "@/lib/public-content";
 
 export const metadata: Metadata = { title: "标签索引" };
+export const dynamic = "force-dynamic";
 
-export default function TagsPage() {
-  const visibleTags = tagCatalog
-    .map((tag) => ({ ...tag, count: getTagArticles(tag.slug).length }))
+export default async function TagsPage() {
+  const [tags, articles] = await Promise.all([listTags(), listPublishedArticles()]);
+  const visibleTags = tags
+    .map((tag) => ({ ...tag, count: articles.filter((article) => article.tags.includes(tag.slug)).length }))
     .filter((tag) => tag.count > 0)
     .sort((left, right) => left.name.localeCompare(right.name, "zh-CN"));
 

@@ -72,7 +72,7 @@
 | 顺序 | Issue | 目标 | 依赖 |
 | --- | --- | --- | --- |
 | 1 | [01-runtime-pilot.md](./issues/01-runtime-pilot.md) | 验证部署、数据库、配图存储与持续成本 | 无 |
-| 2 | [02-public-blog.md](./issues/02-public-blog.md) | 本地可运行的公开博客初版、搜索与文章展示 | 本地初版无依赖；正式发版依赖 01、08 |
+| 2 | [02-public-blog.md](./issues/02-public-blog.md) | 本地 PostgreSQL 驱动的公开博客初版、搜索与文章展示 | 公开发版依赖 01、08 |
 | 3 | [03-email-provider.md](./issues/03-email-provider.md) | 验证免费邮件服务和账号邮件流程 | 无 |
 | 4 | [04-reader-accounts.md](./issues/04-reader-accounts.md) | 注册、登录、密码恢复和管理员权限 | 02、03 |
 | 5 | [05-article-admin.md](./issues/05-article-admin.md) | 管理页上传、预览、发布和下架 MDX 文章 | 01、04 |
