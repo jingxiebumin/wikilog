@@ -34,10 +34,14 @@ const publishedArticleSelect = `
   JOIN article_versions v
     ON v.id = a.current_published_version_id
     AND v.article_id = a.id
-  JOIN categories c ON c.id = a.category_id
-  LEFT JOIN article_version_tags avt ON avt.article_version_id = v.id
-  LEFT JOIN tags t ON t.id = avt.tag_id
+    AND v.del_flag = false
+  JOIN categories c ON c.id = a.category_id AND c.del_flag = false
+  LEFT JOIN article_version_tags avt
+    ON avt.article_version_id = v.id
+    AND avt.del_flag = false
+  LEFT JOIN tags t ON t.id = avt.tag_id AND t.del_flag = false
   WHERE v.status = 'published'
+    AND a.del_flag = false
     AND a.archived_at IS NULL
     AND a.deleted_at IS NULL
 `;
@@ -70,6 +74,7 @@ export async function listCategoriesFromDatabase(): Promise<Category[]> {
   const result = await getPool().query<Category>(`
     SELECT slug, name, description, tone
     FROM categories
+    WHERE del_flag = false
     ORDER BY name
   `);
   return result.rows;
@@ -79,7 +84,7 @@ export async function findCategoryFromDatabase(slug: string): Promise<Category |
   const result = await getPool().query<Category>(`
     SELECT slug, name, description, tone
     FROM categories
-    WHERE slug = $1
+    WHERE slug = $1 AND del_flag = false
   `, [slug]);
   return result.rows[0];
 }
@@ -88,11 +93,13 @@ export async function listTagsFromDatabase() {
   const result = await getPool().query<{ slug: string; name: string }>(`
     SELECT DISTINCT t.slug, t.name
     FROM tags t
-    JOIN article_version_tags avt ON avt.tag_id = t.id
-    JOIN article_versions v ON v.id = avt.article_version_id
+    JOIN article_version_tags avt ON avt.tag_id = t.id AND avt.del_flag = false
+    JOIN article_versions v ON v.id = avt.article_version_id AND v.del_flag = false
     JOIN articles a ON a.id = v.article_id
-    WHERE v.status = 'published'
+    WHERE t.del_flag = false
+      AND v.status = 'published'
       AND a.current_published_version_id = v.id
+      AND a.del_flag = false
       AND a.archived_at IS NULL
       AND a.deleted_at IS NULL
     ORDER BY t.name
@@ -104,12 +111,14 @@ export async function findTagFromDatabase(slug: string) {
   const result = await getPool().query<{ slug: string; name: string }>(`
     SELECT DISTINCT t.slug, t.name
     FROM tags t
-    JOIN article_version_tags avt ON avt.tag_id = t.id
-    JOIN article_versions v ON v.id = avt.article_version_id
+    JOIN article_version_tags avt ON avt.tag_id = t.id AND avt.del_flag = false
+    JOIN article_versions v ON v.id = avt.article_version_id AND v.del_flag = false
     JOIN articles a ON a.id = v.article_id
     WHERE t.slug = $1
+      AND t.del_flag = false
       AND v.status = 'published'
       AND a.current_published_version_id = v.id
+      AND a.del_flag = false
       AND a.archived_at IS NULL
       AND a.deleted_at IS NULL
   `, [slug]);

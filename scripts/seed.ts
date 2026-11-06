@@ -31,6 +31,7 @@ try {
           name = EXCLUDED.name,
           description = EXCLUDED.description,
           tone = EXCLUDED.tone,
+          del_flag = false,
           updated_at = now()
         RETURNING id
       `, [category.slug, category.name, category.description, category.tone]);
@@ -42,7 +43,7 @@ try {
       const result = await client.query<{ id: string }>(`
         INSERT INTO tags (slug, name)
         VALUES ($1, $2)
-        ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, updated_at = now()
+        ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, del_flag = false, updated_at = now()
         RETURNING id
       `, [slug, name]);
       tagIds.set(slug, result.rows[0].id);
@@ -55,7 +56,12 @@ try {
       const articleResult = await client.query<{ id: string }>(`
         INSERT INTO articles (slug, category_id)
         VALUES ($1, $2)
-        ON CONFLICT (slug) DO UPDATE SET category_id = EXCLUDED.category_id, updated_at = now()
+        ON CONFLICT (slug) DO UPDATE SET
+          category_id = EXCLUDED.category_id,
+          archived_at = NULL,
+          deleted_at = NULL,
+          del_flag = false,
+          updated_at = now()
         RETURNING id
       `, [article.slug, categoryId]);
       const articleId = articleResult.rows[0].id;
@@ -75,6 +81,7 @@ try {
           cover = EXCLUDED.cover,
           read_minutes = EXCLUDED.read_minutes,
           published_at = EXCLUDED.published_at,
+          del_flag = false,
           updated_at = now()
         RETURNING id
       `, [
@@ -90,20 +97,26 @@ try {
       ]);
       const versionId = versionResult.rows[0].id;
 
-      await client.query("DELETE FROM article_version_tags WHERE article_version_id = $1", [versionId]);
+      await client.query(`
+        UPDATE article_version_tags
+        SET del_flag = true, updated_at = now()
+        WHERE article_version_id = $1
+      `, [versionId]);
       for (const slug of article.tags) {
         const tagId = tagIds.get(slug);
         if (!tagId) throw new Error(`Missing tag ${slug} for article ${article.slug}`);
         await client.query(`
           INSERT INTO article_version_tags (article_version_id, tag_id)
           VALUES ($1, $2)
-          ON CONFLICT DO NOTHING
+          ON CONFLICT (article_version_id, tag_id) DO UPDATE SET
+            del_flag = false,
+            updated_at = now()
         `, [versionId, tagId]);
       }
 
       await client.query(`
         UPDATE articles
-        SET current_published_version_id = $2, updated_at = now()
+        SET current_published_version_id = $2, del_flag = false, updated_at = now()
         WHERE id = $1
       `, [articleId, article.status === "published" ? versionId : null]);
     }

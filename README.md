@@ -33,6 +33,7 @@ npm run db:stop
 - `articles` 保存稳定 slug 与当前已发布版本指针。
 - `article_versions` 保存文章元数据、JSON 正文、搜索文本和草稿/已发布状态。
 - `article_version_tags` 关联版本与标签。
+- 所有业务表统一包含创建/修改时间、创建/修改用户和 `del_flag` 软删除标记；操作者字段可为空，直到账号与后台功能接入。文章原有 `deleted_at` 会在迁移时同步到 `del_flag`。
 
 公开查询只通过文章的当前已发布版本读取，并排除草稿、下架和已删除文章。数据库 schema 在 `db/migrations/`，本地种子数据在 `lib/content.ts`。
 
