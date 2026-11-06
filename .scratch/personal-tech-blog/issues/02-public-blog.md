@@ -1,6 +1,6 @@
 # Issue 02: 实现公开博客与文章搜索
 
-Status: ready-for-agent
+Status: ready-for-human
 Type: task
 
 ## 目标
@@ -36,3 +36,14 @@ Issue 01 是未来公开发版的门槛，不阻塞本地初版开发。初版�
 - 自动化测试覆盖公开/非公开文章边界、搜索行为和主要路由；项目通过 lint、类型检查、测试及生产构建。
 - 本地开发服务器可运行，所有公开路由可匿名访问，并通过 lint、类型检查、自动化测试及生产构建。
 - 生产环境部署、匿名浏览验收和成本门槛不属于本 issue 的初版完成条件；上线前须完成 Issue 01 与 Issue 08 的相应验收。
+
+## Comments
+
+2026-11-06：已完成本地公开博客初版验收。复核现有实现后保留已满足的公开路由、空态、缺失页、fixture 回退、mailto 联系方式和服务端查询边界；本轮仅补充数据库仓储回归测试与 Vitest 的 Next `server-only`/路径别名测试配置。
+
+- `lib/content-repository.test.ts` 使用 PGlite 执行真实仓储 SQL，覆盖当前发布版本指针、草稿、下架、删除、版本软删除、软删除标签、中文连续子串、英文大小写不敏感、标题优先、正文附近摘要、空查询和无匹配查询。
+- `vitest.config.mts` 增加 `@` 路径及 `server-only` 测试替身映射；`lib/server-only-test-stub.ts` 仅供测试解析 Next 服务端标记。
+- 已验证本地迁移可重复执行：连续两次 `npm run db:migrate` 均报告 `Database schema is up to date.`；`npm run db:seed` 成功写入 3 个分类、13 个标签、6 篇文章（含草稿）。
+- 已执行并通过：`npm test`（3 个测试文件、12 个测试）、`npm run lint`、`npm run typecheck`、`npm run build`。构建包含 `/`、`/articles/[slug]`、`/categories`、`/categories/[slug]`、`/tags`、`/tags/[slug]`、`/search`、`/about` 及 404 路由。
+
+本地完成不代表生产验收。公开发版仍受 Issue 01 的运行平台、数据库、配图持久化和成本验证，以及 Issue 08 的发布加固、备份恢复和目标环境匿名验收阻塞；本轮未实现账号、邮件、文章管理、收藏、问答、生产部署或 LLM Wiki。
