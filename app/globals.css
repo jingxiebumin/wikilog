@@ -140,6 +140,73 @@ input:focus-visible {
   border-bottom-color: var(--coral);
 }
 
+.account-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.account-menu summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 0 10px;
+  color: var(--ink-soft);
+  border-radius: 3px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 12px;
+}
+
+.account-menu summary::-webkit-details-marker { display: none; }
+.account-menu summary:hover { background: var(--surface-soft); }
+
+.account-menu-popover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  right: 0;
+  display: flex;
+  min-width: 150px;
+  flex-direction: column;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 12px 28px rgb(32 37 34 / 10%);
+}
+
+.account-menu-popover a,
+.account-menu-popover button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 8px;
+  color: var(--ink-soft);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 11px;
+  text-align: left;
+}
+
+.account-menu-popover a:hover,
+.account-menu-popover button:hover { color: var(--coral); background: var(--surface-soft); }
+
+.account-page { max-width: 760px; margin: 0 auto; }
+.account-form { display: flex; max-width: 510px; flex-direction: column; gap: 15px; }
+.account-form label { display: flex; flex-direction: column; gap: 5px; color: var(--ink-soft); font-size: 12px; }
+.account-form input { min-height: 42px; padding: 0 11px; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 3px; }
+.account-form input:focus { border-color: var(--green); outline: 2px solid rgb(84 136 120 / 14%); }
+.account-form button { align-self: flex-start; min-height: 38px; padding: 0 15px; color: #fff; background: var(--green); border: 0; border-radius: 3px; cursor: pointer; font-size: 12px; }
+.account-form button:hover { background: var(--ink); }
+.form-help { color: var(--muted); font-size: 11px; }
+.form-help a { color: var(--green); }
+.form-error { margin: 0; padding: 10px 12px; color: #8b3a2c; background: var(--coral-soft); border-left: 3px solid var(--coral); font-size: 12px; }
+.account-notice { max-width: 510px; padding: 14px; color: var(--ink-soft); background: var(--surface-soft); border-left: 3px solid var(--blue); font-size: 12px; }
+.account-links { display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 18px; }
+.admin-sections { display: flex; flex-direction: column; gap: 24px; }
+
 .main-column {
   display: flex;
   flex-direction: column;

@@ -17,14 +17,16 @@
     "db:stop": "docker compose stop postgres",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
-    "db:setup": "npm run db:start && npm run db:migrate && npm run db:seed"
+    "db:setup": "npm run db:start && npm run db:migrate && npm run db:seed",
+    "admin:init": "tsx scripts/init-admin.ts"
   },
   "dependencies": {
     "lucide-react": "^1.68.0",
     "next": "16.4.5",
     "pg": "^8.23.1",
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.15",

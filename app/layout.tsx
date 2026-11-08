@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   description: "关于工程实践、数据检索与系统设计的个人技术手记。",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-CN">
