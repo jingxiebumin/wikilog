@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { BookOpenText, CircleUserRound, Hash, Layers3, LogIn, Settings } from "lucide-react";
+import { BookOpenText, CircleUserRound, Hash, Layers3, LogIn, LogOut, Settings } from "lucide-react";
 import type { UserRole } from "@/lib/auth/types";
 
 const items = [
@@ -66,7 +66,7 @@ export function SiteNavigation({
           <div className="account-menu-popover">
             <Link href="/account" onClick={() => setAccountMenuOpen(false)}><CircleUserRound aria-hidden="true" size={15} />账号设置</Link>
             {session.role === "admin" ? <Link href="/admin" onClick={() => setAccountMenuOpen(false)}><Settings aria-hidden="true" size={15} />管理员设置</Link> : null}
-            <form action="/api/auth/logout" method="post"><button type="submit">退出登录</button></form>
+            <form action="/api/auth/logout" method="post"><button type="submit"><LogOut aria-hidden="true" size={15} />退出登录</button></form>
           </div>
           ) : null}
         </div>

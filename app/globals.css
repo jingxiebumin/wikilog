@@ -192,6 +192,8 @@ input:focus-visible {
 
 .account-menu-popover a:hover,
 .account-menu-popover button:hover { color: var(--coral); background: var(--surface-soft); }
+.account-menu-popover form { width: 100%; }
+.account-menu-popover form button { width: 100%; justify-content: flex-start; }
 
 .account-page { max-width: 760px; margin: 0 auto; }
 .account-form { display: flex; max-width: 510px; flex-direction: column; gap: 15px; }
@@ -199,10 +201,15 @@ input:focus-visible {
 .account-form input { min-height: 42px; padding: 0 11px; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 3px; }
 .account-form input:focus { border-color: var(--green); outline: 2px solid rgb(84 136 120 / 14%); }
 .account-form input[aria-invalid="true"] { border-color: var(--coral); }
-.password-input-wrap { position: relative; display: flex; align-items: center; }
-.password-input-wrap input { width: 100%; padding-right: 42px; }
-.password-visibility { position: absolute; right: 5px; display: grid; width: 32px; height: 32px; place-items: center; color: var(--muted); background: transparent; border: 0; border-radius: 3px; cursor: pointer; }
-.password-visibility:hover { color: var(--ink); background: var(--surface-soft); }
+.password-input-wrap { position: relative; display: flex; min-width: 0; align-items: center; }
+.password-input-wrap input { width: 100%; min-width: 0; padding-right: 42px; }
+.account-form input[type="password"]::-ms-reveal,
+.account-form input[type="password"]::-ms-clear { display: none; }
+.account-form input[type="password"]::-webkit-credentials-auto-fill-button { visibility: hidden; pointer-events: none; }
+.password-visibility { position: absolute; top: 50%; right: 5px; display: grid; width: 32px; height: 32px; min-height: 32px; padding: 0; place-items: center; color: #fff; background: var(--green); border: 0; border-radius: 3px; cursor: pointer; line-height: 1; transform: translateY(-50%); }
+.account-form .password-visibility { align-self: center; min-height: 32px; padding: 0; }
+.account-form .password-visibility:hover { color: var(--ink); background: var(--surface-soft); }
+.account-form .password-visibility:active { color: var(--ink); background: var(--surface-soft); }
 .field-error { color: var(--coral); font-size: 11px; }
 .account-form button { align-self: flex-start; min-height: 38px; padding: 0 15px; color: #fff; background: var(--green); border: 0; border-radius: 3px; cursor: pointer; font-size: 12px; }
 .account-form button:hover { background: var(--ink); }
