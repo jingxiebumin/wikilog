@@ -16,5 +16,7 @@ describe("password account primitives", () => {
     const temporary = generateTemporaryPassword();
     expect(temporary.length).toBeGreaterThan(12);
     expect(validatePassword(temporary)).toBe(temporary);
+    expect(() => validatePassword("12345678")).toThrow("9 到 200");
+    expect(validatePassword("123456789")).toBe("123456789");
   });
 });

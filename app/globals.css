@@ -145,21 +145,21 @@ input:focus-visible {
   flex: 0 0 auto;
 }
 
-.account-menu summary {
+.account-menu-trigger {
   display: flex;
   align-items: center;
   gap: 7px;
   min-height: 42px;
   padding: 0 10px;
   color: var(--ink-soft);
+  background: transparent;
+  border: 0;
   border-radius: 3px;
   cursor: pointer;
-  list-style: none;
   font-size: 12px;
 }
 
-.account-menu summary::-webkit-details-marker { display: none; }
-.account-menu summary:hover { background: var(--surface-soft); }
+.account-menu-trigger:hover { background: var(--surface-soft); }
 
 .account-menu-popover {
   position: absolute;
@@ -195,17 +195,36 @@ input:focus-visible {
 
 .account-page { max-width: 760px; margin: 0 auto; }
 .account-form { display: flex; max-width: 510px; flex-direction: column; gap: 15px; }
-.account-form label { display: flex; flex-direction: column; gap: 5px; color: var(--ink-soft); font-size: 12px; }
+.form-field { display: flex; flex-direction: column; gap: 5px; color: var(--ink-soft); font-size: 12px; }
 .account-form input { min-height: 42px; padding: 0 11px; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 3px; }
 .account-form input:focus { border-color: var(--green); outline: 2px solid rgb(84 136 120 / 14%); }
+.account-form input[aria-invalid="true"] { border-color: var(--coral); }
+.password-input-wrap { position: relative; display: flex; align-items: center; }
+.password-input-wrap input { width: 100%; padding-right: 42px; }
+.password-visibility { position: absolute; right: 5px; display: grid; width: 32px; height: 32px; place-items: center; color: var(--muted); background: transparent; border: 0; border-radius: 3px; cursor: pointer; }
+.password-visibility:hover { color: var(--ink); background: var(--surface-soft); }
+.field-error { color: var(--coral); font-size: 11px; }
 .account-form button { align-self: flex-start; min-height: 38px; padding: 0 15px; color: #fff; background: var(--green); border: 0; border-radius: 3px; cursor: pointer; font-size: 12px; }
 .account-form button:hover { background: var(--ink); }
+.account-form button:disabled { cursor: wait; opacity: .65; }
 .form-help { color: var(--muted); font-size: 11px; }
+.account-form-footer { max-width: 510px; margin-top: 16px; }
 .form-help a { color: var(--green); }
 .form-error { margin: 0; padding: 10px 12px; color: #8b3a2c; background: var(--coral-soft); border-left: 3px solid var(--coral); font-size: 12px; }
 .account-notice { max-width: 510px; padding: 14px; color: var(--ink-soft); background: var(--surface-soft); border-left: 3px solid var(--blue); font-size: 12px; }
 .account-links { display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 18px; }
 .admin-sections { display: flex; flex-direction: column; gap: 24px; }
+.admin-reader-list { max-width: 680px; }
+.admin-reader-list h2 { margin: 0 0 12px; font-size: 18px; }
+.admin-reader-reset { display: flex; flex-direction: column; gap: 11px; margin-top: 12px; padding: 15px; border: 1px solid var(--line); background: var(--surface); }
+.admin-reader-reset > div:first-child { display: flex; flex-direction: column; gap: 2px; }
+.admin-reader-reset > div:first-child span { color: var(--muted); font-size: 11px; }
+.admin-reader-reset .form-field input { min-height: 38px; }
+.admin-reader-reset button { align-self: flex-start; }
+.admin-confirm { display: flex; flex-direction: row; align-items: center; gap: 7px; color: var(--ink-soft); font-size: 11px; }
+.admin-confirm input { width: 15px; height: 15px; min-height: 15px; padding: 0; }
+.temporary-password { display: flex; flex-direction: column; gap: 5px; margin: 0; padding: 10px; color: var(--ink-soft); background: var(--green-soft); border-left: 3px solid var(--green); font-size: 11px; }
+.temporary-password code { color: var(--ink); font-family: var(--mono); font-size: 13px; user-select: all; }
 
 .main-column {
   display: flex;

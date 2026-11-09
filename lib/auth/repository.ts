@@ -31,6 +31,8 @@ const mapUser = (row: UserRow): AuthUser => ({
 
 export type UserWithPassword = AuthUser & { passwordHash: string | null };
 
+export type ReaderAccountSummary = Pick<AuthUser, "id" | "email" | "displayName" | "status" | "passwordResetRequired">;
+
 const mapUserWithPassword = (row: UserRow): UserWithPassword => ({
   ...mapUser(row),
   passwordHash: row.password_hash,
@@ -49,6 +51,15 @@ export async function findUserByEmail(email: string): Promise<UserWithPassword |
 export async function findUserById(id: string): Promise<UserWithPassword | undefined> {
   const result = await getDatabase().query<UserRow>(`${userSelect} WHERE id = $1 AND del_flag = false`, [id]);
   return result.rows[0] ? mapUserWithPassword(result.rows[0]) : undefined;
+}
+
+export async function listReaderAccounts(): Promise<ReaderAccountSummary[]> {
+  const result = await getDatabase().query<UserRow>(`
+    ${userSelect}
+    WHERE role = 'reader'
+    ORDER BY created_at DESC
+  `);
+  return result.rows.map(mapUser);
 }
 
 export async function createReaderAccount(input: {

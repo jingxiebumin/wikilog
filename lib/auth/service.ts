@@ -16,6 +16,8 @@ import {
   setUserStatus,
   updateEmail as updateEmailRecord,
   updatePassword as updatePasswordRecord,
+  listReaderAccounts,
+  type ReaderAccountSummary,
 } from "./repository";
 import { AuthError } from "./errors";
 import { DUMMY_PASSWORD_HASH, generateTemporaryPassword, hashPassword, verifyPassword } from "./password";
@@ -209,6 +211,11 @@ export async function adminCreateReader(input: {
     if (isUniqueViolation(error)) throw new AuthError("CONFLICT", "该邮箱已被使用。");
     throw error;
   }
+}
+
+export async function adminListReaders(operator: Session): Promise<ReaderAccountSummary[]> {
+  if (operator.role !== "admin") throw new AuthError("FORBIDDEN", "没有访问权限。");
+  return listReaderAccounts();
 }
 
 export async function adminDisableReader(input: { operator: Session; targetUserId: string }): Promise<void> {

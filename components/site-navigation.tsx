@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { BookOpenText, CircleUserRound, Hash, Layers3, LogIn, Settings } from "lucide-react";
 import type { UserRole } from "@/lib/auth/types";
 
@@ -22,6 +23,17 @@ export function SiteNavigation({
   session?: { displayName: string; role: UserRole };
 }) {
   const pathname = usePathname();
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) setAccountMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
+  }, [accountMenuOpen]);
 
   return (
     <nav aria-label="主导航" className={`site-nav ${className}`}>
@@ -46,14 +58,18 @@ export function SiteNavigation({
         </Link>
       ) : null}
       {session ? (
-        <details className="account-menu">
-          <summary aria-label="账号菜单"><CircleUserRound aria-hidden="true" size={19} strokeWidth={1.8} /><span>{session.displayName}</span></summary>
+        <div className="account-menu" ref={accountMenuRef}>
+          <button aria-expanded={accountMenuOpen} aria-haspopup="menu" className="account-menu-trigger" onClick={() => setAccountMenuOpen((current) => !current)} type="button">
+            <CircleUserRound aria-hidden="true" size={19} strokeWidth={1.8} /><span>{session.displayName}</span>
+          </button>
+          {accountMenuOpen ? (
           <div className="account-menu-popover">
-            <Link href="/account"><CircleUserRound aria-hidden="true" size={15} />账号设置</Link>
-            {session.role === "admin" ? <Link href="/admin"><Settings aria-hidden="true" size={15} />管理员设置</Link> : null}
+            <Link href="/account" onClick={() => setAccountMenuOpen(false)}><CircleUserRound aria-hidden="true" size={15} />账号设置</Link>
+            {session.role === "admin" ? <Link href="/admin" onClick={() => setAccountMenuOpen(false)}><Settings aria-hidden="true" size={15} />管理员设置</Link> : null}
             <form action="/api/auth/logout" method="post"><button type="submit">退出登录</button></form>
           </div>
-        </details>
+          ) : null}
+        </div>
       ) : null}
     </nav>
   );

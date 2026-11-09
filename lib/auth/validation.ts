@@ -22,8 +22,8 @@ export function validateDisplayName(displayName: string): string {
 }
 
 export function validatePassword(password: string): string {
-  if (password.length < 12 || password.length > 200) {
-    throw new AuthError("INVALID_INPUT", "密码长度需为 12 到 200 个字符。");
+  if (password.length < 9 || password.length > 200) {
+    throw new AuthError("INVALID_INPUT", "密码长度需为 9 到 200 个字符。");
   }
   return password;
 }
