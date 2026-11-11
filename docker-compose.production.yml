@@ -1,0 +1,19 @@
+services:
+  web:
+    image: wikilog-app:pilot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      AUTH_ENABLED: "false"
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - /srv/wikilog/uploads:/app/uploads:ro
+    networks:
+      - pilot
+
+networks:
+  pilot:
+    name: wikilog-pilot
+    external: true
