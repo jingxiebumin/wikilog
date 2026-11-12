@@ -101,6 +101,41 @@ function ResetReaderForm({ reader }: { reader: Reader }) {
   );
 }
 
+function ReaderStatusControl({ reader, onChanged }: { reader: Reader; onChanged: (status: Reader["status"]) => void }) {
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const nextStatus = reader.status === "active" ? "disabled" : "active";
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError("");
+    try {
+      await postJson(`/api/admin/readers/${reader.id}/status`, { status: nextStatus, reason });
+      onChanged(nextStatus);
+      setReason("");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "账号状态更新失败。");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form className="admin-reader-status" onSubmit={submit}>
+      <label className="form-field" htmlFor={`status-reason-${reader.id}`}>
+        <span>{nextStatus === "active" ? "重新启用原因" : "停用原因"}</span>
+        <input id={`status-reason-${reader.id}`} maxLength={300} onChange={(event) => setReason(event.target.value)} required value={reason} />
+      </label>
+      {error ? <p className="form-error" role="alert">{error}</p> : null}
+      <button className="button-link" disabled={submitting} type="submit">
+        {submitting ? "处理中…" : nextStatus === "active" ? "重新启用" : "停用账号"}
+      </button>
+    </form>
+  );
+}
+
 export function AdminReaderManager({ initialReaders }: { initialReaders: Reader[] }) {
   const [readers, setReaders] = useState(initialReaders);
   return (
@@ -108,7 +143,13 @@ export function AdminReaderManager({ initialReaders }: { initialReaders: Reader[
       <CreateReaderForm onCreated={(reader) => setReaders((current) => [reader, ...current])} />
       <section className="admin-reader-list">
         <h2>读者账号</h2>
-        {readers.length === 0 ? <p className="form-help">暂无读者账号。</p> : readers.map((reader) => <ResetReaderForm key={reader.id} reader={reader} />)}
+        {readers.length === 0 ? <p className="form-help">暂无读者账号。</p> : readers.map((reader) => (
+          <div className="admin-reader-entry" key={reader.id}>
+            <div><strong>{reader.displayName} · {reader.status === "active" ? "已启用" : "已停用"}</strong><span>{reader.email}</span></div>
+            <ReaderStatusControl reader={reader} onChanged={(status) => setReaders((current) => current.map((item) => item.id === reader.id ? { ...item, status } : item))} />
+            <ResetReaderForm reader={reader} />
+          </div>
+        ))}
       </section>
     </div>
   );

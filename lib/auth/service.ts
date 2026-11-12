@@ -220,7 +220,19 @@ export async function adminListReaders(operator: Session): Promise<ReaderAccount
 
 export async function adminDisableReader(input: { operator: Session; targetUserId: string }): Promise<void> {
   if (input.operator.role !== "admin") throw new AuthError("FORBIDDEN", "没有访问权限。");
-  const changed = await setUserStatus(input.targetUserId, "disabled", input.operator.id);
+  const changed = await setUserStatus(input.targetUserId, "disabled", input.operator.id, "管理员禁用读者账号");
+  if (!changed) throw new AuthError("NOT_FOUND", "读者账号不存在或已不可用。");
+}
+
+export async function adminSetReaderStatus(input: {
+  operator: Session;
+  targetUserId: string;
+  status: "active" | "disabled";
+  reason: string;
+}): Promise<void> {
+  if (input.operator.role !== "admin") throw new AuthError("FORBIDDEN", "没有访问权限。");
+  const reason = requireNonBlank(input.reason, "操作原因");
+  const changed = await setUserStatus(input.targetUserId, input.status, input.operator.id, reason);
   if (!changed) throw new AuthError("NOT_FOUND", "读者账号不存在或已不可用。");
 }
 

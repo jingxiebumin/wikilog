@@ -124,4 +124,21 @@ describe("initial PostgreSQL schema", () => {
     expect(linkTimestamps.rows[0].preserved).toBe(true);
     expect(association.rows[0].created_at).toBeTruthy();
   });
+
+  it("adds source MDX storage without changing existing article versions", async () => {
+    const category = await database.query<{ id: string }>(`
+      INSERT INTO categories (slug, name, tone) VALUES ('source-test', 'Source test', 'blue') RETURNING id
+    `);
+    const article = await database.query<{ id: string }>(`
+      INSERT INTO articles (slug, category_id) VALUES ('source-test', $1) RETURNING id
+    `, [category.rows[0].id]);
+    const version = await database.query<{ id: string }>(`
+      INSERT INTO article_versions (article_id, version_number, status, title, summary, cover, read_minutes)
+      VALUES ($1, 1, 'draft', 'Legacy draft', 'Summary', 'content', 1) RETURNING id
+    `, [article.rows[0].id]);
+    await database.exec(await readFile(path.join(process.cwd(), "db/migrations/0002_audit_fields.sql"), "utf8"));
+    await database.exec(await readFile(path.join(process.cwd(), "db/migrations/0004_article_sources.sql"), "utf8"));
+    const source = await database.query<{ source_mdx: string }>("SELECT source_mdx FROM article_versions WHERE id = $1", [version.rows[0].id]);
+    expect(source.rows[0].source_mdx).toBe("");
+  });
 });

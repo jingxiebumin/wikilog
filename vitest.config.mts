@@ -10,5 +10,7 @@ export default defineConfig({
   },
   test: {
     include: ["lib/**/*.test.ts"],
+    maxWorkers: 1,
+    minWorkers: 1,
   },
 });

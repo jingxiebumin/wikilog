@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Session } from "./types";
 
 const databaseMocks = vi.hoisted(() => ({
   clientQuery: vi.fn(),
@@ -35,5 +36,16 @@ describe("account launch gates", () => {
     await expect(auth.login({ email: "admin@example.test", password: "long-enough-password" }))
       .rejects.toMatchObject({ code: "DATABASE_UNAVAILABLE" });
 
+  });
+
+  it("rejects reader attempts to change account status", async () => {
+    const auth = await import("./service");
+    const operator = { role: "reader", status: "active" } as Session;
+    await expect(auth.adminSetReaderStatus({
+      operator,
+      targetUserId: "00000000-0000-4000-8000-000000000001",
+      status: "active",
+      reason: "人工复核",
+    })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

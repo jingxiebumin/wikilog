@@ -22,6 +22,7 @@ export default async function AccountPage() {
       <div className="account-links">
         <Link className="button-link" href="/account/profile">修改邮箱</Link>
         <Link className="button-link" href="/account/password">修改密码</Link>
+        {session.role === "reader" ? <Link className="button-link" href="/favorites">我的收藏</Link> : null}
         <Link className="button-link" href="/account/delete">删除账号</Link>
         {session.role === "admin" ? <Link className="button-link" href="/admin">管理员设置</Link> : null}
       </div>

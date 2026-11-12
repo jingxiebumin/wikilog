@@ -180,13 +180,49 @@ export async function createReaderByAdmin(input: {
   return mapUser(result.rows[0]);
 }
 
-export async function setUserStatus(userId: string, status: "active" | "disabled", operatorId: string): Promise<boolean> {
-  const result = await getDatabase().query(`
-    UPDATE users SET status = $2, updated_at = now(), updated_by = $3
-    WHERE id = $1 AND role = 'reader' AND del_flag = false
-  `, [userId, status, operatorId]);
-  if (status === "disabled") await revokeAllSessions(userId);
-  return result.rowCount === 1;
+export async function setUserStatus(
+  userId: string,
+  status: "active" | "disabled",
+  operatorId: string,
+  reason: string,
+): Promise<boolean> {
+  const client = await getDatabase().connect();
+  try {
+    await client.query("BEGIN");
+    const target = await client.query<{ email: string; status: "active" | "disabled" }>(`
+      SELECT email, status FROM users
+      WHERE id = $1 AND role = 'reader' AND del_flag = false
+      FOR UPDATE
+    `, [userId]);
+    const row = target.rows[0];
+    if (!row) {
+      await client.query("ROLLBACK");
+      return false;
+    }
+    if (row.status === status) {
+      await client.query("COMMIT");
+      return true;
+    }
+    await client.query(`
+      UPDATE users SET status = $2, updated_at = now(), updated_by = $3
+      WHERE id = $1
+    `, [userId, status, operatorId]);
+    if (status === "disabled") {
+      await client.query("UPDATE reader_sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL", [userId]);
+    }
+    await client.query(`
+      INSERT INTO admin_reader_status_changes (
+        operator_user_id, target_user_id, target_email, previous_status, new_status, reason
+      ) VALUES ($1, $2, $3, $4, $5, $6)
+    `, [operatorId, userId, row.email, row.status, status, reason]);
+    await client.query("COMMIT");
+    return true;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function resetReaderPassword(input: {
