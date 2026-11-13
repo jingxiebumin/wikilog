@@ -5,7 +5,9 @@ Type: research
 
 ## 目标
 
-验收华为云 Flexus L 上的私有单机试点：以 Next.js App Router、单机 PostgreSQL 和可持久化配图目录验证公开内容的私下读取、数据持久性与恢复能力，并记录资源和费用。该 Flexus 方案是 CloudBase 方案的替代试点，不代表 CloudBase PostgreSQL 通过。
+验收华为云 Flexus L 上的私有单机环境：以 Next.js App Router、单机 PostgreSQL 和可持久化配图目录验证公开内容的私下读取、数据持久性与恢复能力，并记录资源和费用。Flexus L 与自管 PostgreSQL 是当前运行环境。
+
+> 范围决定：CloudBase、域名、ICP备案和 HTTPS 均已明确排除。下方涉及这些项目的供应商调研、报价、候选方案和未验证事项均为历史记录，仅解释当时的决策背景；不得据此创建计划、阻塞项或验收任务。当前 Issue 只跟踪 Flexus L、自管 PostgreSQL 及适用的目标环境和恢复验收。
 
 ## 工作
 
@@ -22,13 +24,13 @@ Type: research
 - Docker/主机重启后数据可读；资源和费用已记录；没有创建真实用户或管理员数据。
 - 安全组由负责人决定暂不调整，作为已接受的风险例外记录；这不代表安全加固通过。
 - 公网访问、ICP备案、HTTPS 和 CloudBase PostgreSQL 均不属于本次验收范围，不能记为已验证。
-- Flexus 单机方案仅作为 CloudBase 方案的替代试点；不因此新增/修改长期架构 ADR。
+- 当前采用 Flexus L 与自管 PostgreSQL；不因此新增/修改长期架构 ADR。
 
 ## 验证记录
 
 2026-11-09：完成仓库侧验证及供应商官方资料调研。Issue 01 尚未通过；没有将本地 PostgreSQL 证据当作 CloudBase 验收，也未创建线上用户或管理员数据。
 
-### 部署平台
+### 历史记录：平台调研和验证（2026-11-09）
 
 - **推荐试点方向**：CloudBase 上海云托管运行 Next.js 容器，配 CloudBase PostgreSQL 与上海 COS 桶。CloudBase 官方文档说明云托管支持容器化框架、上海地域、代码/Git/镜像部署和按量计费，可自动缩至 0；相比静态托管，它与本项目 App Router SSR、Route Handler 和受保护写操作更匹配。来源：[云托管介绍](https://docs.cloudbase.net/run/introduction)、[静态托管介绍](https://docs.cloudbase.net/hosting/introduce)。这是候选配置，不代表已部署或长期选定。
 - 官方 ICP 指引称个人版及以上、剩余有效期至少 6 个月且云托管需固定 IP；免费体验版不支持备案。免费体验版单次周期为 6 个月且仅可在到期前续期，不能作为持续生产依据。来源：[CloudBase ICP 备案指引](https://docs.cloudbase.net/icp/)、[CloudBase 定价](https://tcb.cloud.tencent.com/pricing)。
@@ -36,7 +38,7 @@ Type: research
 - Vercel 官方将 Hobby 标为免费、Pro 为 `$20/月`，后者单项即超过本项目 `¥20/月` 总目标。Vercel Next.js 支持能力充分，但没有目标中国大陆网络实测及备案/域名评估，不推荐作为当前大陆读者生产首选。来源：[Vercel 定价](https://vercel.com/pricing)、[Vercel Next.js 支持](https://vercel.com/docs/frameworks/full-stack/nextjs)。
 - **未验证**：CloudBase 部署是否成功、App Router SSR/API 在上海目标环境能否正常运行、Git 部署/环境变量注入、大陆不同运营商的访问和延迟、真实备案路径及域名费用。没有供应商账号和部署环境，不能标为通过。正式部署必须将 `DATABASE_URL`、COS 凭据放在服务端运行时环境变量，禁止 `NEXT_PUBLIC_` 前缀。
 
-### PostgreSQL
+#### PostgreSQL
 
 - **本地实际验证**：当前 Docker PostgreSQL 18.6 容器 healthy，监听只绑定 `127.0.0.1:5432`；`pg_isready` 成功，服务端 `max_connections=100`。仓储连接池配置 `max: 5`，迁移池 `max: 2`。`npm run db:migrate` 连续执行两次均报告 schema up to date。容器内 `pg_dump 18.6` 成功生成 schema-only dump（当前包含 16 条 CREATE TABLE/INDEX 语句）。Node `pg` 本地 `SELECT 1` 十次耗时为 1.57–39.49ms，均值 6.05ms；这是 Windows 本机 Docker 延迟，不代表上海云端访问延迟。来源为仓库 [docker-compose.yml](../../../docker-compose.yml)、[lib/db.ts](../../../lib/db.ts)、[scripts/migrate.ts](../../../scripts/migrate.ts) 及本轮命令输出。
 - CloudBase 官方连接管理文档确认有实例直连和平台连接池入口；应按最大应用实例数 × 每进程 `pg.Pool.max` 评估直连连接占用。平台连接池适合短请求，但连接会话状态不连续，事务需固定在同一客户端。当前应用 `max: 5`，若部署平台水平扩容，仍需按上限核对实际实例连接额。来源：[CloudBase PostgreSQL 连接管理](https://docs.cloudbase.net/database/postgresql/connection-management)。
@@ -44,7 +46,7 @@ Type: research
 - CloudBase PostgreSQL 费用由规格、存储和超赠送备份空间组成；官方计费说明称当前日志与流量费用暂免，但具体价格和资源点需账号/控制台核价。普通腾讯云 PostgreSQL 的公开规格价格不能替代 CloudBase 共享实例报价。来源：[CloudBase PostgreSQL 计费概述](https://cloud.tencent.com/document/product/409/49577)、[CloudBase 定价](https://tcb.cloud.tencent.com/pricing)。
 - **未验证**：没有 CloudBase 实例，未验证连接串/TLS/网络访问、真实迁移、云端连接上限、备份任务及恢复、上海延迟、实例资源点/试用后价格。当前本地迁移只是迁移脚本和本地 PostgreSQL 兼容性的证据。
 
-### 配图存储
+#### 配图存储
 
 - **候选方案**：COS 上海桶；文章内保存稳定对象 key，公开已发布图片从 COS 匿名读取。COS 官方说明对象默认私有读写，匿名 URL 读取需明确将桶/对象配置为公有读。公有读 URL 可被任何人访问，因此只适用于公开文章配图；草稿预览应由管理员鉴权后通过应用服务端读取，或使用短时预签名 URL。来源：[COS 授权与身份认证](https://cloud.tencent.com/document/product/436/68279)、[COS 临时密钥](https://cloud.tencent.com/document/product/436/68283)。
 - 上传凭据应使用只允许指定桶/前缀读写的服务端 CAM 身份，长期 Secret 不进入浏览器；必要时由服务端签发受限 STS 凭据。COS 文档说明 STS 凭据有效期为 30 分钟至 36 小时，并可用 policy 收窄权限。首版可用应用服务端上传，简单且不暴露长期密钥；公开读取只对已发布 key 开放。
@@ -53,15 +55,15 @@ Type: research
 - COS 新开通个人用户官方免费额度为 50GB 标准存储、有效 180 天，只抵标准存储容量，不抵扣请求、流量或非标准存储。到期后的月费和公网下行费用依赖实际使用量，无法据免费额度证明持续成本符合目标。来源：[COS 免费额度说明](https://cloud.tencent.com/document/product/436/6240)。
 - **未验证**：没有 COS 桶或密钥，未实际上传、匿名读取、校验拒绝、删除对象、重部署后再读，也没有按预期图片大小/浏览量核算流量成本。
 
-### 月成本和验收结论
+#### 月成本和验收结论（当时判断）
 
 - 目标 `网站 + 数据库 ≤ ¥20/月` **未通过/尚不能确认**。CloudBase PERSONAL 当前促销价 `¥19.9/月` 已占据几乎全部预算，但资源池还覆盖部署、数据库、存储、CDN 等消耗，不代表必然包含足够的目标用量；超资源点按量、COS 标准存储到期费用、请求/公网下行、域名、备案/固定 IP 或额外产品费用需另计并按实际价格核算。Vercel Pro `$20/月` 不符合目标；Vercel Hobby 免费档的大陆访问和条款适用性未验收。
 - 成本估算应分为固定月费、套餐资源点消耗、超量按量费和非月付/未计费用。当前固定成本没有可承诺的≤¥20配置，因此不得上线读者账号或宣称成本门槛达标。
 - **Issue 01 未通过**：缺目标云账号/项目、选定的 CloudBase 套餐/实例规格与价格确认、COS 桶及费用核算、实际部署、境内匿名访问/延迟测试、云端迁移、备份恢复演练、上传与匿名读图及重部署持久性测试。
-- **负责人需决定/提供**：是否接受 CloudBase 上海云托管 + CloudBase PostgreSQL + COS 作为试点组合；提供可用的腾讯云项目/控制台访问或由负责人执行创建资源；确认域名/备案责任和月成本上限；在控制台确认长期（非促销）套餐、数据库规格/连接上限/备份保留及 COS 费用后，安排目标环境验收。不得提供密钥到聊天或仓库，应由负责人配置服务端环境变量。
+- **已决定**：不使用/验证 CloudBase，不申请域名、不做备案、不配置 HTTPS。运行环境使用 Flexus L 与自管 PostgreSQL；公网目标为 IP/HTTP，具体开放需完成目标环境与安全验收。不得提供密钥到聊天或仓库，应由负责人配置服务端环境变量。
 - 公开博客 Issue 02 与读者账号 Issue 04 的代码状态不替代运行平台验收。**Issue 05 尚不满足开始条件**：Issue 01 未完成；Issue 04 已实现且可作为代码依赖，但账号入口必须继续受运行/发布门槛关闭。Issue 05 的实现可否先做离线代码工作由负责人决定；不得将其解释为已具备生产部署条件。
 
-### 本轮检查
+#### 当时检查
 
 - `npm run lint`、`npm run typecheck`、`npm run build`：通过。
 - `npm test` 首次默认并行运行有 3 个 PGlite 用例失败；使用单 worker 重跑 `npm test -- --maxWorkers=1 --minWorkers=1 --reporter=verbose` 后 9 个文件、20 个测试全部通过。初次失败疑似并行资源争用，本轮未改代码；需 CI/默认并行环境复核。
@@ -69,7 +71,7 @@ Type: research
 
 ## 已购买服务器后的验证步骤
 
-2026-11-09：负责人已购买华为云 Flexus 应用服务器 L 试点套餐。订单截图显示广州、2 核/2 GiB、40 GiB 系统盘、峰值带宽 2 Mbps、月流量 100 GB、1 年 ¥36。最终金额、到期日、续费价和超额流量单价以订单/费用中心为准。此机器是 CloudBase PostgreSQL 之外的**候选单机替代方案**；验证通过并由负责人接受前，不视为修改了 ADR-0002 的长期决策。
+2026-11-09：负责人已购买华为云 Flexus 应用服务器 L 试点套餐。订单截图显示广州、2 核/2 GiB、40 GiB 系统盘、峰值带宽 2 Mbps、月流量 100 GB、1 年 ¥36。最终金额、到期日、续费价和超额流量单价以订单/费用中心为准。该实例目前作为项目运行环境；本记录不因此新增/修改长期架构 ADR。
 
 2026-11-09：负责人提供服务器终端截图，实际证据为 Ubuntu 24.04.4 LTS (Noble)、x86_64、2 vCPU、40 GiB 根盘（约 35 GiB 可用）、`free -h` 显示总内存 1.7 GiB/可用 1.4 GiB、Swap 0；执行 `docker --version` 返回 `Command 'docker' not found`。Docker 当前未安装。截图来自登录后的 root shell；公网 IP 已遮挡/未记录。本轮尚未验证网络安全组、SSH 来源限制、Docker 安装及容器运行。
 
@@ -105,15 +107,15 @@ Type: research
 
 ### 执行顺序
 
-1. **核对实例与安全组**：在华为云 Flexus L 控制台记录实例 ID、广州地域、公网 IP、操作系统镜像、套餐剩余有效期、流量包、到期及续费金额。服务器执行 `cat /etc/os-release; uname -m; nproc; free -h; df -h /`，确认是预期 Ubuntu、x86_64、2 vCPU/2 GiB 和系统盘容量。安全组只允许负责人当前固定 IP 访问 TCP 22；保持 5432、3000 不对公网开放。网站 80/443 在备案/开放条件确认前也不开放。若负责人无法使用固定出口 IP，使用华为云 CloudShell 时只允许其当前代理 IP，不开放 22 给 `0.0.0.0/0`。来源：[配置 Flexus L 安全组规则](https://support.huaweicloud.com/intl/zh-cn/usermanual-flexusl/security_admin_0004.html)、[CloudShell 登录限制](https://support.huaweicloud.com/usermanual-flexusl/flexusl_0011.html)。
-2. **确认备案路径**：华为云备案资料说明中国大陆节点提供互联网信息服务需依法备案，网站可以通过 IP 或域名访问；申请备案使用的 IP 必须是华为云公网 IP。负责人不买域名时，先在华为云备案控制台确认该实例和账号能否提交 IP 备案。备案/对外开放条件未满足前，用 SSH 隧道访问应用进行私下验证，不以公网 HTTP IP 访问作为已通过证据。来源：[备案基本概念](https://support.huaweicloud.com/icprb-icp/icp_01_0003.html)、[备案限制](https://support.huaweicloud.com/icprb-icp/icp_01_0008.html)。
+1. **核对实例与网络**：在华为云 Flexus L 控制台记录实例 ID、地域、公网 IP、操作系统镜像、套餐、流量包和费用。核对 SSH 来源限制；保持 PostgreSQL 5432 不对公网开放，应用只按确认的公网 IP/HTTP 端口提供访问。具体规则须与负责人已接受的安全组风险例外一并记录，不把风险例外称为安全加固通过。来源：[配置 Flexus L 安全组规则](https://support.huaweicloud.com/intl/zh-cn/usermanual-flexusl/security_admin_0004.html)。
+2. **核对目标访问条件**：域名、备案和 HTTPS 已排除，不执行备案申请调查。公网开放前核对云平台对该实例及 IP/HTTP 访问方式的适用要求；若平台不允许当前访问方式，记录为目标环境阻塞并反馈负责人，不擅自改用域名/HTTPS。
 3. **安装并核验容器运行时**：在干净的 Ubuntu 系统镜像上按华为云 Flexus L Docker 指南安装 Docker Engine/Compose；记录 `docker --version`、`docker compose version` 和 `systemctl is-active docker`。指南以 Ubuntu 22.04 为例；购买的是 Ubuntu 24.04 时，按其对应步骤安装，不直接照搬旧发行版命令。不要使用宝塔/WordPress 等应用镜像。来源：[Flexus L 手动部署 Docker](https://support.huaweicloud.com/bestpractice-flexusl/flexusl_bp_0046.html)。
 4. **准备生产部署形态**：当前仓库的 `docker-compose.yml` 是本地 PostgreSQL 开发配置，未发现生产 Dockerfile、生产 Compose 或 `lib/storage/` 适配器。因此先新增并评审独立的生产配置，不把本地固定密码或本地端口映射直接用于服务器。应用监听容器网络；PostgreSQL 不发布宿主机公网端口；生产 `DATABASE_URL` 只放在服务器端环境文件。2 GiB 机器不承担 Next.js 构建，采用 Linux CI/构建机生成镜像或部署产物，再上传/拉取至服务器。
 5. **部署并验证 PostgreSQL**：数据库容器数据目录挂载到服务器持久目录，数据库仅处于 Compose 私有网络。只执行 `npm run db:migrate` 两次，不运行 `admin:init`，不创建真实管理员/读者，也不导入真实数据。两次都应成功且第二次无新迁移。检查 `SHOW max_connections;`、`SELECT count(*) FROM pg_stat_activity;`、`SELECT count(*) FROM users;`；应用池当前为 `max: 5`，并记录服务空闲与公开页请求时的连接数。用应用同机连接重复执行 `SELECT 1`，记录至少 20 次的 p50/p95，作为单机应用到数据库延迟，不称作公网访问延迟。
 6. **演练数据库备份恢复**：在服务器生成 PostgreSQL 自定义格式备份（`pg_dump -Fc`），将备份复制到服务器之外的负责人电脑/受控存储；在同机临时测试数据库执行 `pg_restore`，核对表、迁移版本和数据行数后清理测试库。不得只把唯一备份留在系统盘。若评估华为云整机备份，控制台启用 CBR 后确认备份成功并记录费用；Flexus L 官方说明可通过 CBR 做实例备份，且不支持使用快照恢复数据。来源：[Flexus L 云备份概述](https://support.huaweicloud.com/intl/zh-cn/usermanual-flexusl/cbr_admin_0001.html)、[备份 Flexus L 实例](https://support.huaweicloud.com/usermanual-flexusl/cbr_admin_0002.html)。
 7. **验证图片目录持久性**：把上传目录设为应用部署目录之外的服务器持久路径（如 `/srv/wikilog/uploads`），只读挂载给服务；使用仓库现有公开样例图或无敏感测试图验证目录读取。重建/替换应用容器、重启 Docker、再重启服务器后分别检查文件仍存在且可读。可用绑定到 `127.0.0.1` 的临时只读静态服务经 SSH 隧道匿名读取测试文件，完成后删除临时服务和测试文件。当前没有文章上传接口，故 Issue 01 只能验证持久目录和读取路径；真实上传、MIME/文件签名伪装、大小限制及文章下架/删除清理需 Issue 05 实现后再验。发布图片可匿名读，草稿不可匿名读。
-8. **验证应用与境内访问**：`AUTH_ENABLED=false`，不初始化管理员。确认 `/`、文章、分类、标签、搜索和关于页可匿名读取已发布文章；确认 `DATABASE_URL` 不出现在客户端构建产物、浏览器响应和日志。先经 SSH 隧道访问 `127.0.0.1:3000` 检查 SSR 与数据库读取。完成所需备案并确认可开放网站端口后，再从家庭宽带和手机蜂窝网络访问，记录时间、地域/运营商、HTTP 状态和响应时间；测试应至少覆盖公开首页、文章详情、图片。HTTP 下不测试登录/密码，账号入口保持关闭，直到 HTTPS 条件另行验收。
-9. **核算试点成本与资源余量**：记录本次 ¥36/年的实付订单、套餐到期日、续费价、100 GB/月流量规则及超量单价；记录额外数据盘、CBR、主机安全、对象存储、备案/证书等实际启用费用（未购买也写明未计入）。华为云公开文档说明套餐外出网流量按地域阶梯按量计费，故超额单价以此订单费用中心为准。记录稳定运行和页面访问期间的 `docker stats`、`free -h`、`df -h` 及流量用量，确认 2 GiB/40 GiB 是否有余量。来源：[Flexus L 超额流量计费](https://support.huaweicloud.com/intl/zh-cn/flexusl_faq/faq_billing_0001.html)、[Flexus L 价格说明](https://www.huaweicloud.com/product/flexus/pricing.html)。
+8. **验证应用与访问**：先经 SSH 隧道检查 SSR、数据库读取及密钥边界，再按目标环境验收从公网 IP/HTTP 访问。验证公开页面可匿名读取；在完成账号功能自身的授权/限速测试后，HTTP 也可测试注册、登录和收藏。问答只对管理员开放，并单独受 Issue 07 门槛控制。记录网络、HTTP 状态和响应结果；不把 HTTP 描述为加密传输。
+9. **核算试点成本与资源余量**：记录本次 ¥36/年的实付订单、套餐到期日、续费价、100 GB/月流量规则及超量单价；记录额外数据盘、CBR、主机安全、对象存储等实际启用费用。域名、备案和证书不属于本项目计划事项。华为云公开文档说明套餐外出网流量按地域阶梯按量计费，故超额单价以此订单费用中心为准。记录稳定运行和页面访问期间的资源与流量用量。来源：[Flexus L 超额流量计费](https://support.huaweicloud.com/intl/zh-cn/flexusl_faq/faq_billing_0001.html)、[Flexus L 价格说明](https://www.huaweicloud.com/product/flexus/pricing.html)。
 
 ### 最终验收结果与限制
 
@@ -127,7 +129,7 @@ Type: research
 
 同日安全组截图共显示 10 条规则，其中可见 IPv4 允许规则包括固定来源 SSH、`0.0.0.0/0` SSH、FTP TCP 20–21、HTTP TCP 80、HTTPS TCP 443、RDP TCP 3389 和全部 ICMP；另有 IPv6 全拒绝规则。截图滚动位置未展示其余 2 条。负责人决定不调整安全组，并明确接受现有规则作为安全组风险例外。本次不修改安全组或开放端口；该例外不代表安全加固通过。Docker 检查确认 Web 仅绑定 `127.0.0.1:3000`，PostgreSQL `5432/tcp` 没有宿主机端口映射。公网访问不在验收范围。
 
-负责人接受 Flexus L 单机自管 PostgreSQL 作为 CloudBase 方案的替代试点；本记录不代表 CloudBase PostgreSQL 已通过验证。私有单机试点在本次范围内验证通过；公网访问、ICP备案、HTTPS 和 CloudBase PostgreSQL 均未验证且不属于本次验收范围。安全组风险例外由负责人接受，但安全加固未通过。Issue 01 状态为 `ready-for-human`，供负责人后续决定是否进入公网部署与加固阶段。
+2026-11-11 记录：私有单机试点在当时范围内验证通过；公网访问、ICP备案、HTTPS 和 CloudBase PostgreSQL 均未验证。安全组风险例外由负责人接受，但安全加固未通过。后续范围决定已明确排除 CloudBase、域名、备案和 HTTPS；请以本 Issue 开头及最新决定为准。
 
 2026-11-11：完成华为云 Flexus L 试点 PostgreSQL 备份恢复演练。通过 SSH 公钥登录 Ubuntu 24.04.4；`wikilog-postgres-pilot` 使用 PostgreSQL 18.6，数据库 `wikilog` 由 `postgres` 角色管理，当前 `app_migrations` 为 `0001_initial.sql`、`0002_audit_fields.sql`、`0003_reader_accounts.sql`，`users` 为 0。生成自定义格式备份（`pg_dump -Fc`，27,876 bytes），复制到本机临时目录并校验 SHA-256：`07bfae5cb6a7a2a292023908dce4938f243179b8763e61e007939f3237f11710`；再将本机副本传回服务器，恢复到临时数据库 `wikilog_restore_20261111_01a1c84b`。源库与恢复库的 11 张 public 表、迁移清单和逐表行数完全一致：`pilot_check=1`、`app_migrations=3`，其余表均为 0，`users=0`。演练通过，不代表云备份服务或自动备份策略已启用。
 
@@ -140,4 +142,6 @@ Type: research
 - 公网访问、ICP备案、HTTPS、真实图片上传和 CloudBase PostgreSQL 不在本次验收范围，未验证。CloudBase 不是待验证候选方案；Flexus L 与自管 PostgreSQL 是当前运行环境。
 - SSH 私钥、服务器密码、数据库密码和云访问密钥不要贴在聊天或提交到仓库；只需提供脱敏控制台信息与命令结果。
 
-2026-11-12：负责人决定自行确认备案状态；不申请域名、不配置 HTTPS、不使用或验证 CloudBase，且之后不再考虑这些事项。该决定取代本 issue 中要求继续评估 CloudBase、域名及 HTTPS 的历史建议，但不改写既有验证记录。待办只保留负责人确认备案状态这一项；备案确认前不开放公网访问。若之后确认可通过 IP/HTTP 提供匿名只读博客，仍需完成相应的安全组、备份恢复和匿名边界验收。没有 HTTPS 时认证、账号管理、收藏、问答及公网管理员写操作不得启用；管理员通过 SSH 隧道管理。Issue 01 保持 `ready-for-human`，直到负责人确认备案状态。
+2026-11-12：负责人决定不申请域名、不配置 HTTPS、不使用或验证 CloudBase，且之后不再考虑这些事项。
+
+2026-11-13：负责人确认备案申请需要域名，因此备案也不考虑。目标公网访问形式为 IP/HTTP；允许账号注册/登录、reader/admin 收藏及受服务端管理员授权保护的管理写操作，问答仅 admin 可用。此决定取代历史记录中“备案待负责人确认”“公网仅匿名只读”和“无 HTTPS 时关闭写操作”的规划性建议，不改写当时未做公网验收的事实。公网开放前仍需核对云平台对当前实例/访问方式的适用要求，并完成安全、备份恢复和分角色验收。HTTP 明文风险见 ADR-0006。Issue 01 剩余工作以适用的目标环境和恢复验收为准，备案、域名、HTTPS 和 CloudBase 不再列为待办。

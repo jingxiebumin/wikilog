@@ -6,21 +6,21 @@
 
 ### 1.1 目标
 
-交付一个面向中国大陆读者的个人技术博客。匿名访客可以浏览已发布文章、主分类、标签和搜索结果。唯一管理员（负责人本人）通过受保护的设置区上传、预览、发布、下架及恢复 MDX 文章；其他身份不能发布或修改文章。通过数据库、部署和发布加固门槛后，读者可注册、登录、收藏和使用基于文章原文的问答；账号不依赖邮件服务。
+交付一个面向中国大陆读者的个人技术博客。匿名访客可以浏览已发布文章、主分类、标签和搜索结果。唯一管理员（负责人本人）通过受保护的管理区维护读者账号、文章和 AI 设置；其他身份不能执行这些管理操作。目标公网形态为 IP/HTTP，不申请域名、不做备案、不配置 HTTPS。公开注册只创建 reader；reader 与已初始化的 admin 登录后均可收藏文章；问答仅对 admin 开放。账号不依赖邮件服务。
 
 已发布文章的服务器端 MDX 源文和元数据是权威内容；渲染后的结构化正文用于展示和检索。新上传版本先是草稿，只有管理员显式发布后才替换同一 slug 的当前公开版本。文章原文始终优先于问答索引或模型输出。
 
-本项目与旧私有 RAG 项目使用独立仓库和数据环境，不迁移旧文档、用户、会话或索引。首版技术形态为 TypeScript、Next.js App Router 和 PostgreSQL；项目使用已购买的华为云 Flexus L 单机及自管 PostgreSQL。负责人已决定不使用、不验证 CloudBase，也不再考虑 CloudBase、域名或 HTTPS。
+本项目与旧私有 RAG 项目使用独立仓库和数据环境，不迁移旧文档、用户、会话或索引。首版技术形态为 TypeScript、Next.js App Router 和 PostgreSQL；项目使用已购买的华为云 Flexus L 单机及自管 PostgreSQL。负责人已决定不使用、不验证 CloudBase，不申请域名、不做备案、不配置 HTTPS，且之后不再考虑这些事项。
 
 ### 1.2 分阶段范围和发布门槛
 
 | 能力 | 实施范围 | 启用条件 |
 | --- | --- | --- |
-| 公开博客 | 首页、文章、分类、标签、搜索、关于/联系；仅查询当前已发布版本 | 备案状态由负责人确认；若获准通过 IP/HTTP 对外提供，只能匿名只读，并须完成适用的 Issue 01/08 安全、备份和发布验收。本地开发不受运行环境阻塞 |
-| 文章管理 | 管理员上传 MDX 与配图、预览草稿、发布版本、下架及恢复 | 持久化运行与文件存储方案通过验证；管理员权限已建立；公网无 HTTPS 时仅允许 SSH 隧道管理，不开放公网写操作 |
-| 读者账号 | 邮箱密码注册/登录、资料和密码管理、管理员临时密码重置、账号删除 | 完整 Issue 08 发布加固通过且有 HTTPS；负责人已排除 HTTPS，因此公网账号入口保持关闭 |
-| 收藏 | 读者添加、查看、移除自己的收藏 | 账号和文章管理可用 |
-| 原文问答 | DeepSeek 问答、文章引用、会话、每日配额和月预算 | DeepSeek 数据处理政策通过验证；预算、配额、用量计量、错误处理和来源校验通过测试；否则关闭问答 |
+| 公开博客 | 首页、文章、分类、标签、搜索、关于/联系；仅查询当前已发布版本 | 目标为公网 IP/HTTP；完成 Issue 01/08 适用的网络、备份、恢复和公开边界验收。本地开发不受运行环境阻塞 |
+| 文章管理 | 管理员上传 MDX 与配图、预览草稿、发布版本、下架及恢复 | 持久化运行与文件存储方案通过验证；每项操作服务端验证管理员身份、限速、审计和输入 |
+| 读者账号 | 邮箱密码注册/登录、资料和密码管理、管理员临时密码重置、账号删除 | 账号实现、限速、服务端授权和发布验收通过；不以 HTTPS 作为功能开关 |
+| 收藏 | 所有 active 登录用户（reader/admin）添加、查看、移除自己的收藏 | 账号和文章管理可用；按用户 ID 隔离数据 |
+| 原文问答 | 仅管理员使用 DeepSeek 问答、文章引用、会话、每日配额和月预算 | DeepSeek 数据处理政策通过验证；预算、配额、用量计量、错误处理和来源校验通过测试；否则关闭问答 |
 | LLM Wiki | 用内部知识层辅助问答，失败时沿用上次成功知识层；更新与文章发布解耦 | 先完成固定题集比较；正确性和引用质量均不低于原文方案、纳入更新费用后符合问答共享预算，并由负责人明确批准。未批准不得实现或启用 |
 
 服务器和基础设施费用按 Issue 01 的实际订单、续费价和按量费用记录，不再与模型预算共用人民币 20 元硬门槛。问答及（仅在获批后）Wiki 更新共享每个 `Asia/Shanghai` 自然月人民币 20 元应用侧估算预算；调用前预算预留不足即拒绝新调用，达到 80% 时在管理设置中提示。这不是供应商账单硬上限，仍须对账。
@@ -46,6 +46,9 @@
 - 使用 PostgreSQL 迁移管理 schema；数据库访问集中在 `lib/` 的服务端模块。页面不直接拼装 SQL。
 - 使用统一的 `Asia/Shanghai` 业务日/月边界处理问答配额和模型预算。涉及并发的每日限额和预算预留必须由数据库事务/约束保证，不能只依赖应用进程内检查。
 - 页面层、路由/Server Action 层和领域服务层分离：传输层负责解析输入及映射响应；领域服务实现校验、权限、事务和业务错误；仓储负责参数化数据库操作。采用 Server Actions 或 Route Handlers 时须沿用此边界，不得绕开服务端领域校验。
+- IP/HTTP 是负责人接受的部署目标，不作为账号或收藏的关闭条件。HTTP 不加密，登录凭据和会话可能被传输链路观察或篡改；仍必须使用服务端会话授权、限速、审计和安全 Cookie 设置，不得把 HTTP 描述为安全传输。公网开放前核对云平台对当前实例和访问方式的适用要求；备案不属于本项目计划事项。
+- 问答只接受 active admin 会话；问答会话按创建者隔离。收藏允许 active reader 和 admin，但任何用户只能读取/删除自己的收藏。
+- 管理区拆分为管理员工作台及独立的账号管理、文章管理、AI 设置/问答页面，不在单页堆叠人工建号、读者资料、文章上传和文章列表。账号管理支持创建、编辑昵称/登录邮箱、启用/停用、临时密码重置；角色不可编辑，管理员不可从此处删除账号。详细界面与验收见 Issue 11。
 - 持久化对象存储及部署服务由对应验证 issue 决定；不接入邮件供应商，不将邮件供应商写进领域模型。
 
 ### 2.2 预期文件范围
@@ -94,10 +97,10 @@
 | `reader_sessions` | 用户 ID、仅哈希后的随机会话 token、过期/撤销时间、创建时间；token 只通过安全、HttpOnly、SameSite Cookie 传递 |
 | `admin_password_resets` | 操作者、目标用户、创建与使用时间、原因和结果；临时密码只以用户密码哈希保存，审计表不得记录临时密码明文，首次登录后必须失效 |
 | `favorites` | `user_id`、稳定 `article_id`、收藏时间；`(user_id, article_id)` 唯一。文章软下架时隐藏但不删除关系，账号删除清理用户关系 |
-| `qa_sessions` | 所属读者、标题/时间等会话元信息；所有查询、删除均按会话所有者约束 |
+| `qa_sessions` | 所属管理员、标题/时间等会话元信息；所有查询、删除均按管理员会话所有者约束 |
 | `qa_messages` | 会话、用户问题/助手回答、状态（`processing`/`succeeded`/`refused`/`failed`/`timed_out`）、模型标识、输入/输出 token、估算费用、请求业务日/月、创建时间；提交供应商后无论成功、拒答、失败或超时都保留状态并计入每日配额；不得保存不必要的凭据或敏感日志 |
 | `qa_citations` | 回答消息、实际引用的 `article_version_id`、原文片段/位置和可验证版本地址；仅允许引用该次检索中有效且当时已发布的原文版本，不能只依赖会随发布切换的当前 slug 页面；文章下架/删除后普通读者不可访问历史页面 |
-| `qa_daily_usage` | 读者与 `Asia/Shanghai` 业务日期唯一、已提交请求数；并发消费配额必须原子化，每日最多 5 次 |
+| `qa_daily_usage` | 管理员与 `Asia/Shanghai` 业务日期唯一、已提交请求数；并发消费配额必须原子化，每名管理员每日最多 5 次 |
 | `model_budget_reservations` | 每次模型供应商调用尝试的唯一调用 ID、用途（问答/Wiki）、发起时的 `Asia/Shanghai` 月份、预留金额、结算金额/状态（`reserved`/`submitted`/`released`/`settled`）、token 与模型用量；同一尝试重复处理不得重复结算。仅供应商调用前失败可释放预留；供应商已受理/已提交后按该次实际 token/费用结算，缺少 usage 时按实施前确认的保守估算结算。再次提交供应商的重试使用新调用 ID 并单独预留和结算；跨月完成仍记入发起月 |
 | LLM Wiki 表（条件） | 仅在 ADR-0003 评估通过并获明确批准后增加；须记录构建版本、源文章版本、状态和费用，完整新版本成功后原子切换；失败保留最后成功版本 |
 
@@ -161,12 +164,12 @@ type SearchResult = {
 | `adminResetPassword(input: { actorId: string; userId: string; reason: string }): Promise<{ temporaryPassword: string }>` | 管理员在线下确认身份后生成一次性临时密码，仅返回一次 | 必须管理员授权；审计记录操作者、目标、时间、原因和结果，不记录临时密码；首次登录强制修改 |
 | `login(input: { email: string; password: string }): Promise<SessionCookieData>`、`logout(sessionId: string): Promise<void>`、`changePassword(userId: string, input: { currentPassword: string; newPassword: string; confirmPassword: string }): Promise<void>` | 验证活跃账号；建立/撤销会话；改密验证旧密码并清除临时密码状态 | 通用凭据错误；按账号、邮箱和来源 IP 限速；改密后按安全策略撤销旧会话 |
 | `deleteAccount(userId: string, input: { currentPassword: string; confirm: true }): Promise<void>` | 再次验证身份后删除账号及本地收藏、会话、问答等个人数据 | 单个事务执行本地级联；供应商侧保留说明只基于已验证政策；不可删除其他用户数据 |
-| `lib/auth/authorization.ts`: `requireReader(): Promise<SessionUser>`、`requireAdmin(): Promise<SessionUser>`、`requireOwner(userId: string, resourceOwnerId: string): void` | 从服务端会话取得可信身份并检查角色/所有权 | 未登录为 `UNAUTHENTICATED`；读者越权为 `FORBIDDEN`；不得接受客户端提交的角色作为授权依据 |
+| `lib/auth/authorization.ts`: `requireReader(): Promise<SessionUser>`、`requireAdmin(): Promise<SessionUser>`、`requireAuthenticatedUser(): Promise<SessionUser>`、`requireOwner(userId: string, resourceOwnerId: string): void` | 从服务端会话取得可信身份并检查角色/所有权 | 未登录为 `UNAUTHENTICATED`；角色不符或越权为 `FORBIDDEN`；不得接受客户端提交的角色作为授权依据 |
 | `lib/articles/service.ts`: `createDraft(input: { sourceMdx: string; files: UploadedAsset[] }, actorId: string): Promise<{ articleId: string; versionId: string; preview: PublicArticle }>` | 验证 frontmatter、受限 MDX、slug、主分类、标签与图片；为唯一管理员的新上传创建草稿版本 | 非管理员拒绝；不合法/危险语法拒绝；slug 已存在时为同文章新建版本，绝不替换当前发布指针；文件校验和保存失败不留下半成品 |
 | `publishArticleVersion(versionId: string, actorId: string): Promise<{ slug: string; versionId: string }>`、`withdrawArticle(slug: string, actorId: string): Promise<void>`、`deleteArticle(slug: string, actorId: string): Promise<void>`、`restoreArticle(slug: string, actorId: string): Promise<void>` | 发布前再次校验草稿；发布时事务更新状态和当前版本指针，旧当前版本转为 `archived`；下架、删除和恢复保持收藏关系 | 仅唯一管理员；目标版本/文章不存在报 `NOT_FOUND`；非法状态转换报 `CONFLICT`；切换失败保留原线上版本；V1 不提供文章永久删除 |
-| `lib/favorites/service.ts`: `addFavorite(userId: string, articleSlug: string): Promise<void>`、`listFavorites(userId: string): Promise<PublicArticle[]>`、`removeFavorite(userId: string, articleSlug: string): Promise<void>` | 管理自己的收藏；列表按最近收藏时间倒序，只列当前公开文章 | 唯一约束处理并发重复收藏；不存在/下架文章不暴露私有信息；会话所有权来自服务端 |
-| `lib/qa/service.ts`: `createQaSession(userId: string): Promise<{ sessionId: string }>`、`askQuestion(input: { userId: string; sessionId: string; question: string; modelId?: string }): Promise<{ messageId: string; status: "succeeded" | "refused" | "failed" | "timed_out"; answer?: string; citations: Citation[]; usage: { inputTokens: number; outputTokens: number; estimatedCny: number } }>` | 校验问题与会话所有权；检索全部已发布原文；模型只能返回服务端提供的来源 ID；输出约 800 个中文字内；有效问题创建并保留问答消息状态 | 每日 5 次；校验、检索或预算拒绝发生在提交前则不计数；提交供应商后成功、拒答、供应商失败和超时都计数；无效引用剔除并转为拒答或失败；预算不足不调用；同一会话按提交顺序处理 |
-| `listQaSessions(userId: string): Promise<QaSessionSummary[]>`、`getQaSession(userId: string, sessionId: string): Promise<QaSession>`、`deleteQaSession(userId: string, sessionId: string): Promise<void>` | 只读写当前读者会话；删除同时清理问题、回答及引用 | 所有查询以 user ID 做数据库约束；他人会话按不可见处理；删除需事务/外键保证完整清理 |
+| `lib/favorites/service.ts`: `addFavorite(userId: string, articleSlug: string): Promise<void>`、`listFavorites(userId: string): Promise<PublicArticle[]>`、`removeFavorite(userId: string, articleSlug: string): Promise<void>` | active reader/admin 管理自己的收藏；列表按最近收藏时间倒序，只列当前公开文章 | 唯一约束处理并发重复收藏；不存在/下架文章不暴露私有信息；会话所有权来自服务端 |
+| `lib/qa/service.ts`: `createQaSession(adminId: string): Promise<{ sessionId: string }>`、`askQuestion(input: { adminId: string; sessionId: string; question: string; modelId?: string }): Promise<{ messageId: string; status: "succeeded" | "refused" | "failed" | "timed_out"; answer?: string; citations: Citation[]; usage: { inputTokens: number; outputTokens: number; estimatedCny: number } }>` | 仅 active admin 可调用；校验问题与会话所有权；检索全部已发布原文；模型只能返回服务端提供的来源 ID；输出约 800 个中文字内；有效问题创建并保留问答消息状态 | 每名管理员每日最多 5 次；提交前失败不计数，提交供应商后成功、拒答、失败和超时都计数；无效引用转为拒答或失败；预算不足不调用；同一会话按提交顺序处理 |
+| `listQaSessions(adminId: string): Promise<QaSessionSummary[]>`、`getQaSession(adminId: string, sessionId: string): Promise<QaSession>`、`deleteQaSession(adminId: string, sessionId: string): Promise<void>` | 仅管理员读取/删除自己创建的问答会话；删除同时清理问题、回答及引用 | 所有查询以 admin ID 做数据库约束；其他身份或会话按不可见处理；删除需事务/外键保证完整清理 |
 | `lib/qa/budget.ts`: `reserveModelBudget(input: { callAttemptId: string; purpose: "qa" | "wiki"; estimatedCny: number; requestedAt: Date }): Promise<{ reservationId: string; monthKey: string }>`、`markModelCallSubmitted(reservationId: string): Promise<void>`、`settleModelBudget(input: { reservationId: string; inputTokens: number; outputTokens: number; estimatedCny: number }): Promise<void>`、`releaseModelBudget(reservationId: string): Promise<void>` | 对每次供应商调用尝试按发起时的 `Asia/Shanghai` 自然月原子预留；记录已提交状态，按该尝试实际 token/费用调整；暴露预算使用比例供管理员设置页展示 | 并发不能超额；仅提交前失败可释放预留；提交后按实际 usage 或待确认的保守估算结算；同一 `callAttemptId` 重复处理幂等；再次调用供应商必须使用新 ID、新预留和独立结算；跨月结算仍归属发起月；达到 80% 提示，额度不足拒绝新调用 |
 | `lib/ai/deepseek.ts`: `complete(input: { modelId: string; system: string; messages: QaPromptMessage[]; maxOutputTokens: number }): Promise<{ text: string; inputTokens: number; outputTokens: number }>` | 使用仅服务端配置的 API Key 和预先验证的模型；返回供应商文本及用量元数据 | 超时/供应商故障映射为 `MODEL_UNAVAILABLE`；密钥不进入异常、日志、请求响应；数据政策未验证时功能开关关闭 |
 | 条件模块 `lib/wiki/service.ts`: `rebuildWiki(sourceVersionIds: string[]): Promise<WikiBuildResult>`、`getLastSuccessfulWiki(): Promise<WikiSnapshot | undefined>` | 由已发布文章更新完整知识层，供问答内部检索并映射回原文；文章发布成功与更新任务解耦 | 仅在评估和人工批准后实施；更新任务去重、串行、可重试并可手动关闭；预算不足或构建失败不回滚文章发布，保留上次成功快照；无成功快照时回退原文检索 |
@@ -184,7 +187,7 @@ type SearchResult = {
 
 ## 3. 实施分步任务清单（Task Checklist）
 
-按依赖顺序执行。每一项必须完成其验证后再进入后续项。`npm test` 是仓库规定的测试命令；最终整体验收还须执行 lint、类型检查和生产构建。Issue 01/03 是验证工作，不得伪造为代码实现完成；当前可在本地继续开发。未配置 HTTPS 时关闭所有公网身份验证与写操作功能。
+按依赖顺序执行。每一项必须完成其验证后再进入后续项。`npm test` 是仓库规定的测试命令；最终整体验收还须执行 lint、类型检查和生产构建。Issue 01/03 是验证工作，不得伪造为代码实现完成；当前可在本地继续开发。IP/HTTP 目标允许注册/登录及所有已登录用户收藏；问答仅 admin 可用。服务端授权、限速、审计和目标环境验收仍是上线门槛，HTTPS 不是功能开关。
 
 ### A. 基线与公开博客
 
@@ -194,7 +197,7 @@ type SearchResult = {
 - [ ] 补足公开内容边界和查询测试，覆盖草稿、下架、删除及非当前版本不可见；验证：数据库仓储测试对每种状态断言首页、分类、标签、详情和搜索均不返回非公开文章，运行 `npm test`。
 - [ ] 固定 fixture 与 PostgreSQL 的搜索契约，覆盖中文连续子串、英文大小写、标题优先、正文附近摘要、空查询和无结果；验证：同一组断言分别运行 fixture 与 PGlite 仓储测试，执行 `npm test`。
 - [ ] 完成公开路由空态、缺失文章、响应式和可访问性检查，确认联系作者使用配置的 `mailto` 且无评论入口；验证：公开路由组件测试/手动匿名验收通过，运行 `npm run lint`、`npm run typecheck`、`npm run build`。
-- [ ] （条件任务）若负责人确认备案并决定公开提供 IP/HTTP 访问，完成匿名只读部署、安全组与数据库/图片恢复验收；没有 HTTPS 时账号、管理写操作、收藏和问答保持关闭。服务器实际订单、续费价和按量费用单独记录，不与问答 `¥20/月` 应用预算混用。
+- [ ] （条件任务）若负责人决定将服务公开到公网 IP/HTTP，完成目标网络、安全组、数据库/图片备份恢复和分角色验收；注册/登录及 reader/admin 收藏可用，问答仅 admin 可用。管理写操作由服务端授权、限速和审计保护。备案不属于项目计划；公网开放前核对云平台对当前实例和访问方式的适用要求。服务器费用单独记录，不与问答 `¥20/月` 应用预算混用。
 
 ### B. 账号与文章管理
 
@@ -204,15 +207,14 @@ type SearchResult = {
 - [x] 实现注册、登录、登出、管理员重置密码、登录后改密及统一防枚举响应；验证：服务层测试覆盖重复邮箱、错误凭据、临时密码一次性使用、旧密码错误、管理员审计及限速，并运行 `npm test`。
 - [x] 实现 reader/admin 服务端授权和受控管理员初始化；验证：读者不能访问管理员操作、伪造客户端角色无效、公开注册永远生成 reader；测试不得创建可用于生产的管理员密钥或账号。
 - [x] 实现账号设置、头像菜单与删除账号流程；验证：未登录、reader、admin 三类导航测试通过；删除需重新验证并仅清除当前用户的本地个人数据，运行 `npm test`。
-- [ ] 实现受限 MDX/frontmatter 解析及原始 MDX/配图持久化接口；验证：合法语法形成结构化节点；import、脚本、任意 JSX、危险 HTML/URL、错误元数据、路径穿越及伪装/超限文件均被测试拒绝，运行 `npm test`。
-- [ ] 实现管理员草稿上传、预览、同 slug 新版本、发布切换、下架和恢复；验证：上传新草稿期间旧发布版本仍公开；仅发布后切换指针；下架不删收藏关系；运行数据库事务和权限测试及 `npm test`。
-- [ ] 实现管理员文章列表和最小设置区，不扩展为复杂仪表盘；验证：草稿预览仅管理员可访问，非管理员服务端请求返回统一拒绝，配图与文章版本引用一致，运行 `npm test`、`npm run typecheck`。
+- [ ] 完成受限 MDX 解析、图片持久化和文章版本工作流；验收细节见 Issue 05。
+- [ ] 完成管理员文章管理页，并按 Issue 11 拆分账号、文章和 AI 设置页面；验证：管理员授权覆盖页面与接口，单页不堆叠无关流程，运行 `npm test`、`npm run typecheck`。
 
 ### C. 收藏
 
 - [ ] 创建收藏表及唯一约束，按稳定 `article_id` 维护收藏关系；验证：迁移测试验证唯一约束和账号删除清理，运行 `npm test`。
-- [ ] 实现收藏添加、列表、移除及归属校验；验证：并发重复添加仍只有一条；他人不能列出/删除；下架隐藏、重发恢复且时间倒序，运行 `npm test`。
-- [ ] 接入文章页收藏按钮和读者收藏列表；验证：访客引导登录、读者只看到自己的当前公开文章收藏、无收藏和文章下架均有明确空态，运行 `npm run lint`、`npm run typecheck`、`npm test`。
+- [ ] 实现收藏添加、列表、移除及归属校验；验证：并发重复添加仍只有一条；reader/admin 均可用但他人不能列出/删除；下架隐藏、重发恢复且时间倒序，运行 `npm test`。
+- [x] 接入文章页收藏按钮和所有登录用户的收藏列表；验证：访客引导登录，reader/admin 只看到自己的当前公开文章收藏，无收藏和文章下架均有明确空态，运行 lint、typecheck、test。实现记录见 Issue 06；公网启用另受 Issue 08 验收控制。
 
 ### D. 原文问答与预算
 
@@ -220,17 +222,17 @@ type SearchResult = {
 - [ ] 增加会话、问答消息、引用、日配额和预算预留数据结构；验证：迁移测试检查外键、唯一约束、删除级联、月份/业务日记录及索引，运行 `npm test`。
 - [ ] 实现只检索当前已发布文章的原文查询及可校验来源 ID；验证：草稿、下架、旧非当前版本不能作为新回答来源，引用 href 必须由服务端生成，运行 `npm test`。
 - [ ] 实现 DeepSeek 服务端适配、模型 allowlist、超时、token 计量和脱敏日志；验证：mock provider 覆盖成功、超时、供应商错误及密钥从客户端 bundle/响应/日志不可见，运行 `npm test`。
-- [ ] 实现 `Asia/Shanghai` 自然日最多 5 次的原子配额，以及提交时点计数规则；验证：并发压测/数据库测试不超过 5 次，提交前失败不计数，已提交成功、拒答、供应商失败和超时均计数，边界时区按 `Asia/Shanghai` 正确归日，运行 `npm test`。
+- [ ] 实现仅管理员可用的 `Asia/Shanghai` 自然日最多 5 次原子配额；验证：匿名/reader 被拒绝，管理员并发不超过 5 次，提交前失败不计数，提交后的终态均计数，边界时区正确归日，运行 `npm test`。
 - [ ] 实现共享月预算的事务性预留、提交标记、结算、释放和幂等处理；验证：每次供应商调用尝试有唯一调用 ID；同一 ID 重复处理不重复结算，真实重试使用新 ID 并独立计量；提交前失败释放预留，提交后按实际 usage 或已批准估算结算；并发请求不能超预算；跨月完成记入发起月；余额不足不调用模型；达到 80% 的提示状态可查询；运行 `npm test`。
 - [ ] 实现回答引用校验、证据不足拒答、约 800 个中文字目标和问答会话生命周期；验证：固定可回答、跨文章、错误来源和证据不足题通过；会话越权不可读；删除会话清理其问题、回答和引用；运行 `npm test`。
-- [ ] 实现问答/会话 UI、从文章页提问及管理员模型/预算状态设置；验证：API Key 不下发、一个模型时隐藏切换控件、读者无法查看他人会话、配额/预算/超时均显示安全提示，运行 `npm run lint`、`npm run typecheck`、`npm test`。
+- [ ] 实现管理员问答/会话 UI、从文章页提问及管理员模型/预算状态设置；验证：入口只对 admin 显示且服务端拒绝其他角色、API Key 不下发、会话隔离、配额/预算/超时显示安全提示，运行 lint、typecheck、test。
 
 ### E. 安全加固与首发验收
 
 - [ ] 完成认证、上传、管理写操作、收藏和问答的端到端授权、输入限制、限速及失败降级；验证：匿名/reader/admin 三角色端到端测试通过，DB、对象存储和模型故障不泄漏内部信息。
 - [ ] 建立 PostgreSQL 与文章图片备份/恢复流程并执行恢复演练；验证：从备份恢复后公开文章、版本与图片引用一致，保留演练记录。
-- [ ] 匿名最低验收通过后，待 Issue 04–07 完成再执行完整发布加固、全角色验收及全量质量门禁；验证：匿名阶段记录只授权匿名只读发布；完整阶段核验生产网站/数据库持续成本，并建立供应商账单与应用模型估算的对账方法，留存实际费用来源、预算阈值与未涵盖费用说明。
-- [ ] 确认条件化功能开关符合门槛；验证：未通过数据库、部署或发布加固时账号/收藏/问答入口关闭；未通过模型政策或预算门槛时问答关闭；公开博客仍可匿名使用。
+- [ ] 按能力分阶段执行生产验收：注册/登录与 reader/admin 收藏依赖 Issue 04/06 和账号授权限速验收；管理员文章写操作依赖 Issue 05/11；管理员问答另依赖 Issue 07 及模型政策/预算验收。验证：各自记录开关状态、分角色 E2E、成本对账、备份恢复和回滚结果；一个能力未通过不自动关闭其他已通过能力。
+- [ ] 确认功能开关符合门槛；验证：目标环境未验收前不宣称公网开放；IP/HTTP 下注册、登录和 reader/admin 收藏可用；问答仅 admin 且未通过模型政策或预算时关闭；公开博客仍可匿名使用。
 - [ ] 执行首发完整质量门禁；验证：`npm run lint`、`npm run typecheck`、`npm test`、`npm run build` 全部通过，并完成目标环境匿名、reader、admin 验收。
 
 ### F. LLM Wiki（严格条件任务）
@@ -244,7 +246,7 @@ type SearchResult = {
 ## 4. 完成定义
 
 - 公共页面只暴露当前已发布版本，匿名访问不依赖账号；草稿、下架及已删除内容不进入公开查询。只有负责人本人作为唯一管理员可以上传、预览、发布、下架和恢复文章。
-- 账号、文章后台、收藏、问答和 Wiki 各自只在其依赖与发布门槛通过后启用；未通过的可选能力有明确关闭路径，不影响公开博客。
+- 账号和收藏在服务端授权/限速验收后可通过公网 IP/HTTP 使用，reader/admin 均可收藏；问答仅 admin 且受模型政策、预算门槛控制。管理写操作须有服务端管理员授权、限速和审计；HTTPS 不是单独的关闭条件。目标环境未验收前不得宣称已公网开放。
 - 数据迁移可重复应用；关键事务、授权、所有权、并发限额、失败回退和安全边界有自动化测试覆盖。
 - `npm run lint`、`npm run typecheck`、`npm test`、`npm run build` 通过；目标环境发布、成本及恢复演练记录齐全。
 - Wiki 不属于无条件 V1 交付项；未通过 ADR-0003 评估或未获负责人批准时，原文问答是唯一实现方案。
@@ -256,4 +258,5 @@ type SearchResult = {
 - [ADR-0003：先验证 LLM Wiki 的回答质量](./adr/0003-validate-llm-wiki-before-adoption.md)。
 - [ADR-0004：通过管理页上传 MDX 维护文章](./adr/0004-admin-uploaded-mdx-articles.md)。
 - [ADR-0005：密码账号不依赖邮件服务](./adr/0005-password-accounts-with-email-links.md)。
-- 相关实施细化与依赖：[`.scratch/personal-tech-blog/spec.md`](../.scratch/personal-tech-blog/spec.md) 及其中 Issue 01-10。出现冲突时以 ADR 和负责人明确决策为准；不要通过本规格静默改写架构决策。
+- [ADR-0006：公网 IP/HTTP 与角色功能边界](./adr/0006-ip-http-and-role-feature-boundaries.md)。
+- 相关实施细化与依赖：[`.scratch/personal-tech-blog/spec.md`](../.scratch/personal-tech-blog/spec.md) 及其中 Issue 01-11。出现冲突时以 ADR 和负责人明确决策为准；不要通过本规格静默改写架构决策。
