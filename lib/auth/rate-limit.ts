@@ -21,6 +21,10 @@ export const RATE_LIMIT_RULES = {
     account: { maxAttempts: numberFromEnv("AUTH_ADMIN_RESET_ACCOUNT_LIMIT", 5), windowSeconds: 900 },
     ip: { maxAttempts: numberFromEnv("AUTH_ADMIN_RESET_IP_LIMIT", 10), windowSeconds: 900 },
   },
+  adminManage: {
+    account: { maxAttempts: numberFromEnv("AUTH_ADMIN_MANAGE_ACCOUNT_LIMIT", 10), windowSeconds: 900 },
+    ip: { maxAttempts: numberFromEnv("AUTH_ADMIN_MANAGE_IP_LIMIT", 30), windowSeconds: 900 },
+  },
 } as const;
 
 export type RateLimitDatabase = {

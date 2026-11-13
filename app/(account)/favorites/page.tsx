@@ -14,13 +14,12 @@ export default async function FavoritesPage() {
   } catch {
     redirect("/login");
   }
-  if (session.role !== "reader") redirect("/account");
   const favorites = await readerFavorites(session);
 
   return (
     <section className="page favorites-page">
       <div className="page-heading">
-        <p className="eyebrow"><span className="eyebrow-mark" />读者收藏</p>
+        <p className="eyebrow"><span className="eyebrow-mark" />我的收藏</p>
         <h1>收藏文章</h1>
         <p>只显示目前公开的文章。</p>
       </div>

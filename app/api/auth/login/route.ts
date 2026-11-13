@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const response = request.headers.get("accept")?.includes("text/html")
       ? NextResponse.redirect(new URL(destination, request.url), 303)
       : NextResponse.json({ user: result.user });
-    return setSessionCookie(response, result.token);
+    return setSessionCookie(response, result.token, request);
   } catch (error) {
     return request.headers.get("accept")?.includes("text/html")
       ? redirectWithError(request, error, "/login")

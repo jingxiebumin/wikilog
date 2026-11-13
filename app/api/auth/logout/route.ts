@@ -7,5 +7,5 @@ export async function POST(request: Request) {
   const response = request.headers.get("accept")?.includes("text/html")
     ? NextResponse.redirect(new URL("/", request.url), 303)
     : NextResponse.json({ ok: true });
-  return clearSessionCookie(response);
+  return clearSessionCookie(response, request);
 }

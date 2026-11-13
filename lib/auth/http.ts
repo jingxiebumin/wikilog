@@ -12,26 +12,28 @@ export function requestMeta(request: Request): RequestMeta {
   };
 }
 
-export function setSessionCookie(response: NextResponse, token: string): NextResponse {
+const isHttpsRequest = (request: Request): boolean => new URL(request.url).protocol === "https:";
+
+export function setSessionCookie(response: NextResponse, token: string, request: Request): NextResponse {
   response.cookies.set({
     name: SESSION_COOKIE,
     value: token,
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isHttpsRequest(request),
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });
   return response;
 }
 
-export function clearSessionCookie(response: NextResponse): NextResponse {
+export function clearSessionCookie(response: NextResponse, request: Request): NextResponse {
   response.cookies.set({
     name: SESSION_COOKIE,
     value: "",
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isHttpsRequest(request),
     path: "/",
     maxAge: 0,
   });

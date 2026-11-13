@@ -15,7 +15,7 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-import { deleteAccount, setUserStatus } from "./repository";
+import { deleteAccount, setUserStatus, updateReaderProfile } from "./repository";
 
 describe("reader account removal", () => {
   let database: PGlite;
@@ -25,7 +25,7 @@ describe("reader account removal", () => {
   beforeEach(async () => {
     database = new PGlite();
     repositoryState.database = database;
-    for (const file of ["0001_initial.sql", "0002_audit_fields.sql", "0003_reader_accounts.sql", "0006_reader_status_audit.sql"]) {
+    for (const file of ["0001_initial.sql", "0002_audit_fields.sql", "0003_reader_accounts.sql", "0006_reader_status_audit.sql", "0007_reader_profile_audit.sql"]) {
       await database.exec(await readFile(path.join(process.cwd(), "db/migrations", file), "utf8"));
     }
     const admin = await database.query<{ id: string }>(`
@@ -83,5 +83,44 @@ describe("reader account removal", () => {
       { previous_status: "active", new_status: "disabled", reason: "管理员停用", target_email: "reader@example.test" },
       { previous_status: "disabled", new_status: "active", reason: "人工复核后重新启用", target_email: "reader@example.test" },
     ]);
+  });
+
+  it("audits reader profile changes and revokes sessions when the email changes", async () => {
+    const updated = await updateReaderProfile({
+      targetUserId: readerId,
+      operatorUserId: adminId,
+      email: "new-reader@example.test",
+      displayName: "New Reader",
+      reason: "读者申请更换登录邮箱",
+    });
+
+    const sessions = await database.query<{ revoked_at: Date | null }>("SELECT revoked_at FROM reader_sessions WHERE user_id = $1", [readerId]);
+    const audits = await database.query<{ previous_email: string; new_email: string; previous_display_name: string; new_display_name: string; reason: string }>(`
+      SELECT previous_email, new_email, previous_display_name, new_display_name, reason
+      FROM admin_reader_profile_changes WHERE target_user_id = $1
+    `, [readerId]);
+
+    expect(updated).toMatchObject({ email: "new-reader@example.test", displayName: "New Reader", role: "reader" });
+    expect(sessions.rows[0].revoked_at).not.toBeNull();
+    expect(audits.rows).toEqual([{
+      previous_email: "reader@example.test",
+      new_email: "new-reader@example.test",
+      previous_display_name: "Reader",
+      new_display_name: "New Reader",
+      reason: "读者申请更换登录邮箱",
+    }]);
+  });
+
+  it("does not revoke sessions when only the display name changes", async () => {
+    await updateReaderProfile({
+      targetUserId: readerId,
+      operatorUserId: adminId,
+      email: "reader@example.test",
+      displayName: "Renamed Reader",
+      reason: "修正昵称",
+    });
+
+    const sessions = await database.query<{ revoked_at: Date | null }>("SELECT revoked_at FROM reader_sessions WHERE user_id = $1", [readerId]);
+    expect(sessions.rows[0].revoked_at).toBeNull();
   });
 });

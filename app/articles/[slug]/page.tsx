@@ -32,7 +32,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     .filter((item) => item.slug !== article.slug && item.category === article.category)
     .slice(0, 2);
   const session = await getCurrentSession();
-  const favorite = session?.role === "reader" && !session.passwordResetRequired
+  const favorite = session && !session.passwordResetRequired
     ? await readerHasFavorite(session, article.slug)
     : false;
 
@@ -50,7 +50,9 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             <time dateTime={article.publishedAt}>{article.publishedAt.replaceAll("-", ".")}</time>
             <span className="byline-divider" aria-hidden="true" />
             <span><Clock3 aria-hidden="true" size={14} />{article.readMinutes} 分钟</span>
-            {session?.role === "reader" && !session.passwordResetRequired ? <FavoriteButton initialFavorite={favorite} slug={article.slug} /> : null}
+            {session && !session.passwordResetRequired
+              ? <FavoriteButton initialFavorite={favorite} slug={article.slug} />
+              : !session ? <Link className="favorite-login-link" href="/login">登录后收藏</Link> : null}
           </div>
         </header>
 

@@ -15,6 +15,7 @@ import {
   revokeSession,
   setUserStatus,
   updateEmail as updateEmailRecord,
+  updateReaderProfile,
   updatePassword as updatePasswordRecord,
   listReaderAccounts,
   type ReaderAccountSummary,
@@ -57,6 +58,14 @@ const enforceRateLimits = async (
   await consumeRateLimits(database, [
     { bucket: `${action}:account:${normalizeEmail(email)}`, rule: rules.account },
     { bucket: `${action}:ip:${ip}`, rule: rules.ip },
+  ]);
+};
+
+const enforceAdminManageRateLimits = async (targetUserId: string, ip: string): Promise<void> => {
+  const rules = RATE_LIMIT_RULES.adminManage;
+  await consumeRateLimits(getDatabase(), [
+    { bucket: `adminManage:reader:${targetUserId}`, rule: rules.account },
+    { bucket: `adminManage:ip:${ip}`, rule: rules.ip },
   ]);
 };
 
@@ -218,8 +227,9 @@ export async function adminListReaders(operator: Session): Promise<ReaderAccount
   return listReaderAccounts();
 }
 
-export async function adminDisableReader(input: { operator: Session; targetUserId: string }): Promise<void> {
+export async function adminDisableReader(input: { operator: Session; targetUserId: string; meta?: RequestMeta }): Promise<void> {
   if (input.operator.role !== "admin") throw new AuthError("FORBIDDEN", "没有访问权限。");
+  await enforceAdminManageRateLimits(input.targetUserId, input.meta?.ip ?? "unknown");
   const changed = await setUserStatus(input.targetUserId, "disabled", input.operator.id, "管理员禁用读者账号");
   if (!changed) throw new AuthError("NOT_FOUND", "读者账号不存在或已不可用。");
 }
@@ -229,11 +239,44 @@ export async function adminSetReaderStatus(input: {
   targetUserId: string;
   status: "active" | "disabled";
   reason: string;
+  meta?: RequestMeta;
 }): Promise<void> {
   if (input.operator.role !== "admin") throw new AuthError("FORBIDDEN", "没有访问权限。");
   const reason = requireNonBlank(input.reason, "操作原因");
+  await enforceAdminManageRateLimits(input.targetUserId, input.meta?.ip ?? "unknown");
   const changed = await setUserStatus(input.targetUserId, input.status, input.operator.id, reason);
   if (!changed) throw new AuthError("NOT_FOUND", "读者账号不存在或已不可用。");
+}
+
+export async function adminEditReader(input: {
+  operator: Session;
+  targetUserId: string;
+  email: string;
+  displayName: string;
+  reason: string;
+  meta?: RequestMeta;
+}): Promise<ReaderAccountSummary> {
+  if (input.operator.role !== "admin" || input.operator.status !== "active") {
+    throw new AuthError("FORBIDDEN", "没有访问权限。");
+  }
+  const email = validateEmail(input.email);
+  const displayName = validateDisplayName(input.displayName);
+  const reason = requireNonBlank(input.reason, "操作原因");
+  await enforceAdminManageRateLimits(input.targetUserId, input.meta?.ip ?? "unknown");
+  try {
+    const reader = await updateReaderProfile({
+      targetUserId: input.targetUserId,
+      operatorUserId: input.operator.id,
+      email,
+      displayName,
+      reason,
+    });
+    if (!reader) throw new AuthError("NOT_FOUND", "读者账号不存在。");
+    return reader;
+  } catch (error) {
+    if (isUniqueViolation(error)) throw new AuthError("CONFLICT", "该邮箱已被使用。");
+    throw error;
+  }
 }
 
 export async function adminResetReader(input: {

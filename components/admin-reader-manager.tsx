@@ -101,6 +101,44 @@ function ResetReaderForm({ reader }: { reader: Reader }) {
   );
 }
 
+function EditReaderForm({ reader, onSaved }: { reader: Reader; onSaved: (reader: Reader) => void }) {
+  const [displayName, setDisplayName] = useState(reader.displayName);
+  const [email, setEmail] = useState(reader.email);
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await postJson(`/api/admin/readers/${reader.id}`, { displayName, email, reason });
+      if (result.user) onSaved(result.user);
+      setReason("");
+      setNotice("资料已保存。邮箱变更后，该读者需要重新登录。");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "资料更新失败。");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form className="admin-reader-edit" onSubmit={submit}>
+      <h3>编辑读者资料</h3>
+      <label className="form-field" htmlFor={`reader-name-${reader.id}`}><span>昵称</span><input id={`reader-name-${reader.id}`} maxLength={80} onChange={(event) => setDisplayName(event.target.value)} required value={displayName} /></label>
+      <label className="form-field" htmlFor={`reader-email-${reader.id}`}><span>登录邮箱</span><input id={`reader-email-${reader.id}`} onChange={(event) => setEmail(event.target.value)} required type="email" value={email} /></label>
+      <label className="form-field" htmlFor={`reader-edit-reason-${reader.id}`}><span>修改原因</span><input id={`reader-edit-reason-${reader.id}`} maxLength={300} onChange={(event) => setReason(event.target.value)} required value={reason} /></label>
+      {error ? <p className="form-error" role="alert">{error}</p> : null}
+      {notice ? <p className="account-notice" role="status">{notice}</p> : null}
+      <button disabled={submitting} type="submit">{submitting ? "保存中…" : "保存资料"}</button>
+    </form>
+  );
+}
+
 function ReaderStatusControl({ reader, onChanged }: { reader: Reader; onChanged: (status: Reader["status"]) => void }) {
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
@@ -138,14 +176,17 @@ function ReaderStatusControl({ reader, onChanged }: { reader: Reader; onChanged:
 
 export function AdminReaderManager({ initialReaders }: { initialReaders: Reader[] }) {
   const [readers, setReaders] = useState(initialReaders);
+  const [filter, setFilter] = useState("");
+  const visibleReaders = readers.filter((reader) => `${reader.displayName} ${reader.email} ${reader.status}`.toLocaleLowerCase().includes(filter.trim().toLocaleLowerCase()));
   return (
     <div className="admin-sections">
       <CreateReaderForm onCreated={(reader) => setReaders((current) => [reader, ...current])} />
       <section className="admin-reader-list">
-        <h2>读者账号</h2>
-        {readers.length === 0 ? <p className="form-help">暂无读者账号。</p> : readers.map((reader) => (
+        <div className="admin-reader-list-heading"><h2>读者账号</h2><label className="form-field"><span>搜索昵称、邮箱或状态</span><input onChange={(event) => setFilter(event.target.value)} type="search" value={filter} /></label></div>
+        {visibleReaders.length === 0 ? <p className="form-help">{readers.length === 0 ? "暂无读者账号。" : "没有匹配的账号。"}</p> : visibleReaders.map((reader) => (
           <div className="admin-reader-entry" key={reader.id}>
             <div><strong>{reader.displayName} · {reader.status === "active" ? "已启用" : "已停用"}</strong><span>{reader.email}</span></div>
+            <EditReaderForm reader={reader} onSaved={(updated) => setReaders((current) => current.map((item) => item.id === reader.id ? updated : item))} />
             <ReaderStatusControl reader={reader} onChanged={(status) => setReaders((current) => current.map((item) => item.id === reader.id ? { ...item, status } : item))} />
             <ResetReaderForm reader={reader} />
           </div>

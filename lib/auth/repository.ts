@@ -225,6 +225,51 @@ export async function setUserStatus(
   }
 }
 
+export async function updateReaderProfile(input: {
+  targetUserId: string;
+  operatorUserId: string;
+  email: string;
+  displayName: string;
+  reason: string;
+}): Promise<ReaderAccountSummary | undefined> {
+  const client = await getDatabase().connect();
+  try {
+    await client.query("BEGIN");
+    const current = await client.query<{ email: string; display_name: string }>(`
+      SELECT email, display_name FROM users
+      WHERE id = $1 AND role = 'reader' AND del_flag = false
+      FOR UPDATE
+    `, [input.targetUserId]);
+    const previous = current.rows[0];
+    if (!previous) {
+      await client.query("ROLLBACK");
+      return undefined;
+    }
+    const emailChanged = previous.email.toLowerCase() !== input.email.toLowerCase();
+    const updated = await client.query<UserRow>(`
+      UPDATE users SET email = $2, display_name = $3, updated_at = now(), updated_by = $4
+      WHERE id = $1
+      RETURNING id, email, display_name, password_hash, role, status, password_reset_required
+    `, [input.targetUserId, input.email, input.displayName, input.operatorUserId]);
+    if (emailChanged) {
+      await client.query("UPDATE reader_sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL", [input.targetUserId]);
+    }
+    await client.query(`
+      INSERT INTO admin_reader_profile_changes (
+        operator_user_id, target_user_id, previous_email, new_email,
+        previous_display_name, new_display_name, reason
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [input.operatorUserId, input.targetUserId, previous.email, input.email, previous.display_name, input.displayName, input.reason]);
+    await client.query("COMMIT");
+    return mapUser(updated.rows[0]);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function resetReaderPassword(input: {
   operatorUserId: string;
   targetUserId: string;

@@ -65,8 +65,8 @@ export function SiteNavigation({
           {accountMenuOpen ? (
           <div className="account-menu-popover">
             <Link href="/account" onClick={() => setAccountMenuOpen(false)}><CircleUserRound aria-hidden="true" size={15} />账号设置</Link>
-            {session.role === "reader" ? <Link href="/favorites" onClick={() => setAccountMenuOpen(false)}><Bookmark aria-hidden="true" size={15} />我的收藏</Link> : null}
-            {session.role === "admin" ? <Link href="/admin" onClick={() => setAccountMenuOpen(false)}><Settings aria-hidden="true" size={15} />管理员设置</Link> : null}
+            <Link href="/favorites" onClick={() => setAccountMenuOpen(false)}><Bookmark aria-hidden="true" size={15} />我的收藏</Link>
+            {session.role === "admin" ? <Link href="/admin" onClick={() => setAccountMenuOpen(false)}><Settings aria-hidden="true" size={15} />博客管理</Link> : null}
             <form action="/api/auth/logout" method="post"><button type="submit"><LogOut aria-hidden="true" size={15} />退出登录</button></form>
           </div>
           ) : null}
