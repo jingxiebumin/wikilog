@@ -18,7 +18,7 @@
 | --- | --- | --- |
 | 公开博客 | 首页、文章、分类、标签、搜索、关于/联系；仅查询当前已发布版本 | 目标为公网 IP/HTTP；完成 Issue 01/08 适用的网络、备份、恢复和公开边界验收。本地开发不受运行环境阻塞 |
 | 文章管理 | 管理员上传 MDX 与配图、预览草稿、发布版本、下架及恢复 | 持久化运行与文件存储方案通过验证；每项操作服务端验证管理员身份、限速、审计和输入 |
-| 读者账号 | 邮箱密码注册/登录、资料和密码管理、管理员临时密码重置、账号删除 | 账号实现、限速、服务端授权和发布验收通过；不以 HTTPS 作为功能开关 |
+| 读者账号 | 邮箱密码注册/登录、个人中心资料和密码管理、管理员创建/编辑/重置密码/软删除与恢复 | 账号实现、限速、服务端授权和发布验收通过；头像上传另须通过华为云服务器私有持久目录的写入、读取、重启持久性和备份恢复验证 |
 | 收藏 | 所有 active 登录用户（reader/admin）添加、查看、移除自己的收藏 | 账号和文章管理可用；按用户 ID 隔离数据 |
 | 原文问答 | 仅管理员使用 DeepSeek 问答、文章引用、会话、每日配额和月预算 | DeepSeek 数据处理政策通过验证；预算、配额、用量计量、错误处理和来源校验通过测试；否则关闭问答 |
 | LLM Wiki | 用内部知识层辅助问答，失败时沿用上次成功知识层；更新与文章发布解耦 | 先完成固定题集比较；正确性和引用质量均不低于原文方案、纳入更新费用后符合问答共享预算，并由负责人明确批准。未批准不得实现或启用 |
@@ -46,10 +46,12 @@
 - 使用 PostgreSQL 迁移管理 schema；数据库访问集中在 `lib/` 的服务端模块。页面不直接拼装 SQL。
 - 使用统一的 `Asia/Shanghai` 业务日/月边界处理问答配额和模型预算。涉及并发的每日限额和预算预留必须由数据库事务/约束保证，不能只依赖应用进程内检查。
 - 页面层、路由/Server Action 层和领域服务层分离：传输层负责解析输入及映射响应；领域服务实现校验、权限、事务和业务错误；仓储负责参数化数据库操作。采用 Server Actions 或 Route Handlers 时须沿用此边界，不得绕开服务端领域校验。
-- IP/HTTP 是负责人接受的部署目标，不作为账号或收藏的关闭条件。HTTP 不加密，登录凭据和会话可能被传输链路观察或篡改；仍必须使用服务端会话授权、限速、审计和安全 Cookie 设置，不得把 HTTP 描述为安全传输。公网开放前核对云平台对当前实例和访问方式的适用要求；备案不属于本项目计划事项。
+- IP/HTTP 是负责人接受的部署目标，不作为账号或收藏的关闭条件。HTTP 不加密，登录凭据和会话可能被传输链路观察或篡改；仍必须使用服务端会话授权、限速和安全 Cookie 设置，不得把 HTTP 描述为安全传输。需审计的管理操作遵循各自 Issue；读者账号管理仅记录用户表字段。公网开放前核对云平台对当前实例和访问方式的适用要求；备案不属于本项目计划事项。
 - 问答只接受 active admin 会话；问答会话按创建者隔离。收藏允许 active reader 和 admin，但任何用户只能读取/删除自己的收藏。
-- 管理区拆分为管理员工作台及独立的账号管理、文章管理、AI 设置/问答页面，不在单页堆叠人工建号、读者资料、文章上传和文章列表。账号管理支持创建、编辑昵称/登录邮箱、启用/停用、临时密码重置；角色不可编辑，管理员不可从此处删除账号。详细界面与验收见 Issue 11。
-- 持久化对象存储及部署服务由对应验证 issue 决定；不接入邮件供应商，不将邮件供应商写进领域模型。
+- 个人中心与管理员设置均采用左右布局；未登录访问个人中心跳转登录页。管理员设置包含账号管理、文章管理、AI 设置与问答三个独立二级路由；`/admin` 重定向至 `/admin/readers`。匿名用户与 reader 访问 `/admin` 及任意子路由时显示带返回首页链接的 404，管理 API 对这两类身份返回 404。账号管理的创建、资料编辑、密码重置、软删除和恢复见 Issue 11；不提供启用/停用、角色编辑或读者自助删除。
+- 读者账号管理只将创建人/时间、最近修改人/时间和删除原因保留在 `users` 行，不记录逐次账号操作日志；文章等其他管理操作遵循各自 Issue 的日志/审计要求。
+- 用户头像固定存放于已购买的华为云服务器私有持久目录，通过服务端鉴权后只允许本人读取，不使用公开静态目录。实际目录由实施阶段确定；头像上传实施前验证目录写权限、上传和本人鉴权读取、容器/主机重启后的持久性及备份恢复。文章上传图片的存储细节仍依 Issue 01/05 验证，不把头像决策外推为文章图片方案。
+- 文章资源的持久化方案仍由对应验证 Issue 决定；不接入邮件供应商，不将邮件供应商写进领域模型。
 
 ### 2.2 预期文件范围
 
@@ -58,13 +60,13 @@
 | 路径 | 变更职责 |
 | --- | --- |
 | `app/page.tsx`、`app/articles/[slug]/page.tsx`、`app/categories/**`、`app/tags/**`、`app/search/page.tsx`、`app/about/page.tsx` | 保持公开路由只显示已发布数据；文章页预留收藏/问答入口的条件化挂载 |
-| `app/layout.tsx`、`components/site-navigation.tsx`、`components/site-shell.tsx` | 添加经服务端会话驱动的头像菜单；仅管理员看见博客设置入口，未启用账号时保留公开导航 |
+| `app/layout.tsx`、`components/site-navigation.tsx`、`components/site-shell.tsx` | 添加经服务端会话驱动的头像菜单；登录用户看到个人中心，管理员另见管理员设置；未启用账号时保留公开导航 |
 | `components/article-body.tsx`、`lib/content.ts` | 定义和安全渲染允许的结构化正文节点；保留 fixture 与搜索行为用于本地预览和回归 |
 | `lib/db.ts`、`lib/content-repository.ts`、`lib/public-content.ts` | 保持服务端 PostgreSQL 连接池和公开查询边界；增加按已发布文章版本读取正文/引用所需字段的仓储函数 |
 | `db/migrations/0003_*.sql` 及后续迁移 | 为 MDX 源文、读者令牌/会话、收藏、问答、预算等增加兼容迁移；每个变更独立迁移并可重复通过迁移器应用 |
 | `scripts/migrate.ts`、`scripts/seed.ts` | 纳入新迁移及仅供本地使用的示例；种子不得重置或覆盖线上内容，也不得创建可用生产管理员/真实用户 |
-| `lib/auth/**`（新） | 密码哈希、会话、注册/登录/管理员临时密码重置/修改/删除账号和权限校验 |
-| `lib/storage/**`（新） | 持久对象存储供应商接口、配置适配、失败映射 |
+| `lib/auth/**`（新） | 密码哈希、会话、注册/登录、个人资料与头像授权、管理员初始密码/重置、读者软删除/恢复及权限校验 |
+| `lib/storage/**`（新） | 服务端存储适配与失败映射；头像适配已购华为云服务器私有持久目录，文章图片继续依 Issue 01/05 确认 |
 | `lib/articles/**`（新） | frontmatter 校验、受限 MDX 解析、草稿预览、版本发布/下架和管理员写权限 |
 | `lib/favorites/**`（新） | 收藏创建、列表、删除及用户所有权检查 |
 | `lib/qa/**`、`lib/ai/**`（新） | 原文检索、DeepSeek 服务端适配、回答来源校验、会话、配额、预算预留/结算 |
@@ -80,7 +82,7 @@
 
 | 表 | 已确定职责与关键约束 |
 | --- | --- |
-| `users` | `id`、`email`、`display_name`、`password_hash`、`role(reader/admin)`、`status(active/disabled)`；邮箱大小写不敏感唯一，仅作登录名和人工联系字段。确认密码不存储；公开注册固定 `reader`。0001 中的 `pending` 和 `email_verified_at` 是待 Issue 04 迁移清理的旧字段，不再表示业务状态。 |
+| `users` | `id`、`email`、`display_name`、`password_hash`、`role(reader/admin)`、`status(active/disabled)`，并扩展可选手机号、性别、个人介绍、头像资源引用和删除原因；管理员新建读者在首次设置昵称前允许 `display_name` 为空。邮箱仅对未软删除账号保持大小写不敏感唯一；仅作登录名和人工联系字段。用户行保留 `created_at/created_by`、`updated_at/updated_by` 和软删除 `del_flag`。确认密码不存储；公开注册固定 `reader`。0001 中的 `pending` 和 `email_verified_at` 是待 Issue 04 迁移清理的旧字段，不再表示业务状态。管理员账号管理不提供启用/停用功能；`del_flag` 为真时账号软删除，不物理删除用户或关联数据。 |
 | `categories` | 受控主分类：唯一 `slug`、名称、描述、展示 tone；文章只有一个主分类 |
 | `tags` | 唯一 `slug` 与名称；可跨越主分类 |
 | `articles` | 稳定唯一 `slug`、`category_id`、`current_published_version_id`、可恢复的下架/删除时间；下架与删除是不同文章状态，V1 不永久删除文章，版本发布通过此指针切换 |
@@ -95,7 +97,7 @@
 | --- | --- |
 | `article_versions` 扩展 | 保存上传的原始 `source_mdx`，使服务端存档的源文可审计和重新解析；兼容已有种子版本。配图引用需关联稳定的文章版本/对象存储 key，发布前草稿图片不得绕开权限校验公开访问 |
 | `reader_sessions` | 用户 ID、仅哈希后的随机会话 token、过期/撤销时间、创建时间；token 只通过安全、HttpOnly、SameSite Cookie 传递 |
-| `admin_password_resets` | 操作者、目标用户、创建与使用时间、原因和结果；临时密码只以用户密码哈希保存，审计表不得记录临时密码明文，首次登录后必须失效 |
+| 已有密码重置记录 | `admin_password_resets` 是既有实现表；本次新建的账号管理流程不新增逐次操作日志，也不再向该表写入操作记录。是否清理既有历史行不属于本需求。密码状态在 `users` 行更新；密码仅保存哈希。固定初始/重置密码为 `123456`，首次登录必须修改 |
 | `favorites` | `user_id`、稳定 `article_id`、收藏时间；`(user_id, article_id)` 唯一。文章软下架时隐藏但不删除关系，账号删除清理用户关系 |
 | `qa_sessions` | 所属管理员、标题/时间等会话元信息；所有查询、删除均按管理员会话所有者约束 |
 | `qa_messages` | 会话、用户问题/助手回答、状态（`processing`/`succeeded`/`refused`/`failed`/`timed_out`）、模型标识、输入/输出 token、估算费用、请求业务日/月、创建时间；提交供应商后无论成功、拒答、失败或超时都保留状态并计入每日配额；不得保存不必要的凭据或敏感日志 |
@@ -104,7 +106,7 @@
 | `model_budget_reservations` | 每次模型供应商调用尝试的唯一调用 ID、用途（问答/Wiki）、发起时的 `Asia/Shanghai` 月份、预留金额、结算金额/状态（`reserved`/`submitted`/`released`/`settled`）、token 与模型用量；同一尝试重复处理不得重复结算。仅供应商调用前失败可释放预留；供应商已受理/已提交后按该次实际 token/费用结算，缺少 usage 时按实施前确认的保守估算结算。再次提交供应商的重试使用新调用 ID 并单独预留和结算；跨月完成仍记入发起月 |
 | LLM Wiki 表（条件） | 仅在 ADR-0003 评估通过并获明确批准后增加；须记录构建版本、源文章版本、状态和费用，完整新版本成功后原子切换；失败保留最后成功版本 |
 
-密码采用成熟的带盐密码哈希；会话 token 使用密码学安全随机值并只保存哈希。管理员临时密码只通过受保护入口展示一次，数据库不得保存明文；管理员重置审计记录操作者、目标账号、时间、原因和结果，不记录临时密码。
+密码采用成熟的带盐密码哈希；会话 token 使用密码学安全随机值并只保存哈希。管理员创建读者和重置密码均将密码设为固定值 `123456`；新读者首次登录要求设置昵称及新密码，既有读者重置后首次登录只要求改密，完成前不能继续使用系统。新读者首次设置后轮换当前会话令牌并继续当前会话；重置密码通过二次确认并明确提示该固定值，不要求线下身份确认或填写原因。密码只保存哈希。管理员读者账号操作仅更新用户行的创建/最近修改信息及删除原因，不新增逐次操作日志。
 
 #### TypeScript 领域类型
 
@@ -160,11 +162,18 @@ type SearchResult = {
 | 模块/签名 | 入参与出参 | 错误/事务要求 |
 | --- | --- | --- |
 | `lib/public-content.ts`: `listPublishedArticles(): Promise<PublicArticle[]>`、`getPublishedArticle(slug: string): Promise<PublicArticle | undefined>`、`listArticlesForCategory(slug: string): Promise<PublicArticle[]>`、`listArticlesForTag(slug: string): Promise<PublicArticle[]>`、`searchPublishedArticles(query: string): Promise<SearchResult[]>` | 仅返回当前已发布版本；搜索返回标题命中优先、正文命中附近摘要 | 空查询返回空列表；无匹配返回空列表；数据库错误交给通用错误边界，不返回草稿或内部错误 |
-| `lib/auth/service.ts`: `registerReader(input: { displayName: string; email: string; password: string; confirmPassword: string }): Promise<{ userId: string }>` | 校验字段、唯一邮箱并创建 active reader；确认密码只参与校验，不发送邮件 | 公开注册强制 reader；重复邮箱响应不枚举；邮箱只作登录名和人工联系字段 |
-| `adminResetPassword(input: { actorId: string; userId: string; reason: string }): Promise<{ temporaryPassword: string }>` | 管理员在线下确认身份后生成一次性临时密码，仅返回一次 | 必须管理员授权；审计记录操作者、目标、时间、原因和结果，不记录临时密码；首次登录强制修改 |
-| `login(input: { email: string; password: string }): Promise<SessionCookieData>`、`logout(sessionId: string): Promise<void>`、`changePassword(userId: string, input: { currentPassword: string; newPassword: string; confirmPassword: string }): Promise<void>` | 验证活跃账号；建立/撤销会话；改密验证旧密码并清除临时密码状态 | 通用凭据错误；按账号、邮箱和来源 IP 限速；改密后按安全策略撤销旧会话 |
-| `deleteAccount(userId: string, input: { currentPassword: string; confirm: true }): Promise<void>` | 再次验证身份后删除账号及本地收藏、会话、问答等个人数据 | 单个事务执行本地级联；供应商侧保留说明只基于已验证政策；不可删除其他用户数据 |
-| `lib/auth/authorization.ts`: `requireReader(): Promise<SessionUser>`、`requireAdmin(): Promise<SessionUser>`、`requireAuthenticatedUser(): Promise<SessionUser>`、`requireOwner(userId: string, resourceOwnerId: string): void` | 从服务端会话取得可信身份并检查角色/所有权 | 未登录为 `UNAUTHENTICATED`；角色不符或越权为 `FORBIDDEN`；不得接受客户端提交的角色作为授权依据 |
+| `lib/auth/service.ts`: `registerReader(input: { displayName: string; email: string; password: string; confirmPassword: string }): Promise<{ userId: string }>` | 校验字段、唯一邮箱并创建 active reader；确认密码只参与校验，不发送邮件 | 公开注册强制 reader；重复的未删除邮箱响应不枚举；软删除账号邮箱可重新注册；邮箱只作登录名和人工联系字段 |
+| `updateOwnProfile(userId, input: { displayName: string; phone?: string; gender?: string; introduction?: string })` | 读者修改自己的基础资料；昵称必填，其余选填 | 所有权来自服务端会话；手机号按约定格式校验，个人介绍不超过 500 字；更新 users 最近修改字段 |
+| `setOwnAvatar(userId, image)` | 读者上传并保存自己的头像；图片文件存入华为云服务器私有持久目录 | 只允许 JPEG/PNG/WebP 静态图片且不超过 5 MB；上传和读取均校验会话所有权；目录写入、重启持久性和备份恢复未验收前不得开放上传 |
+| `completeFirstLoginSetup(userId, input: { displayName: string; newPassword: string; confirmPassword: string })` | 新建读者首次登录时设置昵称和新密码 | 完成前不得继续使用系统；至少 9 位；轮换当前会话令牌并继续当前会话，撤销其他会话 |
+| `completePasswordReset(userId, input: { newPassword: string; confirmPassword: string })` | 已有读者使用管理员重置密码登录后设置新密码 | 保留已有昵称；完成前不得继续使用系统；至少 9 位 |
+| `changeOwnEmail(userId, input: { currentPassword: string; newEmail: string })` | 本人修改作为登录名的邮箱 | 需当前密码、大小写不敏感唯一；不发送验证邮件；成功后撤销该用户全部会话 |
+| `adminCreateReader(actorId, email)`、`adminUpdateReader(actorId, userId, profile)` | 管理员只用邮箱创建读者；可修改昵称、邮箱、手机号、性别 | 创建密码固定为 `123456`；邮箱冲突拒绝；管理员修改邮箱不要求读者密码；所有修改更新 users 行元数据，不写逐次操作日志 |
+| `adminResetReaderPassword(actorId, userId)` | 二次确认后将读者密码重置为固定值 `123456` | 不要求线下身份确认或填写原因；撤销目标用户全部会话并要求首次登录改密；不写逐次操作日志 |
+| `adminSoftDeleteReader(actorId, userId, reason?)`、`adminRestoreReader(actorId, userId)` | 软删除只设置 users `del_flag` 并可记录选填删除原因；恢复时清空原因 | 撤销目标用户会话；保留用户和关联数据；恢复前检查邮箱是否已被未删除账号占用，冲突时拒绝；不记录逐次操作日志 |
+| `login(input: { email: string; password: string }): Promise<SessionCookieData>`、`logout(sessionId: string): Promise<void>`、`changePassword(userId: string, input: { currentPassword: string; newPassword: string; confirmPassword: string }): Promise<void>` | 验证活跃账号；建立/撤销会话；改密验证旧密码并清除首次改密状态 | 通用凭据错误；按账号、邮箱和来源 IP 限速；普通改密保留当前浏览器会话并撤销其他会话 |
+| `deleteAccount(userId: string, input: { currentPassword: string; confirm: true }): Promise<void>` | 读者自助删除账号入口当前停用 | 页面与 API 均不可用；管理员通过上述软删除操作维护读者账号 |
+| `lib/auth/authorization.ts`: `requireReader(): Promise<SessionUser>`、`requireAdmin(): Promise<SessionUser>`、`requireAuthenticatedUser(): Promise<SessionUser>`、`requireOwner(userId: string, resourceOwnerId: string): void` | 从服务端会话取得可信身份并检查角色/所有权 | 不得接受客户端角色作为判权依据；匿名或 reader 访问 `/admin` 页面及管理 API 时统一映射为 404，普通账户页面仍按登录边界处理 |
 | `lib/articles/service.ts`: `createDraft(input: { sourceMdx: string; files: UploadedAsset[] }, actorId: string): Promise<{ articleId: string; versionId: string; preview: PublicArticle }>` | 验证 frontmatter、受限 MDX、slug、主分类、标签与图片；为唯一管理员的新上传创建草稿版本 | 非管理员拒绝；不合法/危险语法拒绝；slug 已存在时为同文章新建版本，绝不替换当前发布指针；文件校验和保存失败不留下半成品 |
 | `publishArticleVersion(versionId: string, actorId: string): Promise<{ slug: string; versionId: string }>`、`withdrawArticle(slug: string, actorId: string): Promise<void>`、`deleteArticle(slug: string, actorId: string): Promise<void>`、`restoreArticle(slug: string, actorId: string): Promise<void>` | 发布前再次校验草稿；发布时事务更新状态和当前版本指针，旧当前版本转为 `archived`；下架、删除和恢复保持收藏关系 | 仅唯一管理员；目标版本/文章不存在报 `NOT_FOUND`；非法状态转换报 `CONFLICT`；切换失败保留原线上版本；V1 不提供文章永久删除 |
 | `lib/favorites/service.ts`: `addFavorite(userId: string, articleSlug: string): Promise<void>`、`listFavorites(userId: string): Promise<PublicArticle[]>`、`removeFavorite(userId: string, articleSlug: string): Promise<void>` | active reader/admin 管理自己的收藏；列表按最近收藏时间倒序，只列当前公开文章 | 唯一约束处理并发重复收藏；不存在/下架文章不暴露私有信息；会话所有权来自服务端 |
@@ -187,7 +196,7 @@ type SearchResult = {
 
 ## 3. 实施分步任务清单（Task Checklist）
 
-按依赖顺序执行。每一项必须完成其验证后再进入后续项。`npm test` 是仓库规定的测试命令；最终整体验收还须执行 lint、类型检查和生产构建。Issue 01/03 是验证工作，不得伪造为代码实现完成；当前可在本地继续开发。IP/HTTP 目标允许注册/登录及所有已登录用户收藏；问答仅 admin 可用。服务端授权、限速、审计和目标环境验收仍是上线门槛，HTTPS 不是功能开关。
+按依赖顺序执行。每一项必须完成其验证后再进入后续项。`npm test` 是仓库规定的测试命令；最终整体验收还须执行 lint、类型检查和生产构建。Issue 01/03 是验证工作，不得伪造为代码实现完成；当前可在本地继续开发。IP/HTTP 目标允许注册/登录及所有已登录用户收藏；问答仅 admin 可用。服务端授权、限速、目标环境验收和适用的管理操作审计仍是上线门槛，读者账号管理的变更仅保留用户表元数据，HTTPS 不是功能开关。
 
 ### A. 基线与公开博客
 
@@ -197,18 +206,23 @@ type SearchResult = {
 - [ ] 补足公开内容边界和查询测试，覆盖草稿、下架、删除及非当前版本不可见；验证：数据库仓储测试对每种状态断言首页、分类、标签、详情和搜索均不返回非公开文章，运行 `npm test`。
 - [ ] 固定 fixture 与 PostgreSQL 的搜索契约，覆盖中文连续子串、英文大小写、标题优先、正文附近摘要、空查询和无结果；验证：同一组断言分别运行 fixture 与 PGlite 仓储测试，执行 `npm test`。
 - [ ] 完成公开路由空态、缺失文章、响应式和可访问性检查，确认联系作者使用配置的 `mailto` 且无评论入口；验证：公开路由组件测试/手动匿名验收通过，运行 `npm run lint`、`npm run typecheck`、`npm run build`。
-- [ ] （条件任务）若负责人决定将服务公开到公网 IP/HTTP，完成目标网络、安全组、数据库/图片备份恢复和分角色验收；注册/登录及 reader/admin 收藏可用，问答仅 admin 可用。管理写操作由服务端授权、限速和审计保护。备案不属于项目计划；公网开放前核对云平台对当前实例和访问方式的适用要求。服务器费用单独记录，不与问答 `¥20/月` 应用预算混用。
+- [ ] （条件任务）若负责人决定将服务公开到公网 IP/HTTP，完成目标网络、安全组、数据库/图片备份恢复和分角色验收；注册/登录及 reader/admin 收藏可用，问答仅 admin 可用。管理写操作由服务端授权和限速保护；需审计的操作按各自 Issue 验收，读者账号管理只保留用户表字段。公网开放前核对云平台对当前实例和访问方式的适用要求。服务器费用单独记录，不与问答 `¥20/月` 应用预算混用。
 
 ### B. 账号与文章管理
 
-- [x] 记录不接入邮件服务的账号方案；验证：Issue 03 标记 `wontfix`，ADR-0005、词汇表和账号规格同步改为临时密码与管理员审计方案。
+- [x] 记录不接入邮件服务的账号方案；验证：Issue 03 标记 `wontfix`，ADR-0005、词汇表和账号规格同步记录邮箱登录基线；管理员读者初始/重置密码以 2026-11-14 新确认规则为准。
 - [ ] 增加账号及文章源文所需的向前兼容迁移，保留原有数据与迁移顺序；验证：PGlite 从空库和已有 0001/0002 数据应用全部迁移，确认旧文章可读，`npm test`。
-- [x] 实现密码哈希、会话、管理员临时密码状态和服务端身份读取；验证：认证测试覆盖哈希而非明文、临时密码不落库、首次登录强制改密及 cookie 属性，运行 `npm test`。
-- [x] 实现注册、登录、登出、管理员重置密码、登录后改密及统一防枚举响应；验证：服务层测试覆盖重复邮箱、错误凭据、临时密码一次性使用、旧密码错误、管理员审计及限速，并运行 `npm test`。
+- [x] 实现基础密码哈希、会话、首次改密状态和服务端身份读取；验证：认证测试覆盖哈希而非明文、首次登录强制改密及 cookie 属性，运行 `npm test`。当前管理员固定密码和新账号管理要求尚待 Issue 11 实现。
+- [x] 实现原有注册、登录、登出、管理员重置密码、登录后改密及统一防枚举响应；验证记录见 Issue 04 历史评论。旧随机临时密码和逐次审计行为由新需求取代。
 - [x] 实现 reader/admin 服务端授权和受控管理员初始化；验证：读者不能访问管理员操作、伪造客户端角色无效、公开注册永远生成 reader；测试不得创建可用于生产的管理员密钥或账号。
-- [x] 实现账号设置、头像菜单与删除账号流程；验证：未登录、reader、admin 三类导航测试通过；删除需重新验证并仅清除当前用户的本地个人数据，运行 `npm test`。
+- [x] 实现原有账号设置与头像菜单；验证记录见 Issue 04 历史评论。个人中心新布局和字段、头像上传及读者自助删除停用尚待 Issue 11 实现。
+- [ ] 完成公共左右布局、个人中心基础信息/邮箱/密码标签页及保存、重置、失败与成功反馈；验证：按 Issue 11 对 reader/admin/匿名用户验收并运行 `npm test`。
+- [ ] 完成头像上传、预览、确认保存和本人私有读取；前置：在已购华为云服务器的私有持久目录上验证应用写入、实际上传/读取、容器与主机重启持久性、备份和恢复。目录未确定前不固化示例路径；验证：路径由实施记录确认，权限和恢复验收均通过后再开放上传。
+- [ ] 完成管理员 `/admin` 公共布局、账号管理和 404 权限边界；验证：`/admin` 重定向到 `/admin/readers`，匿名/reader 对所有管理页和 API 均得 404 且页面有返回首页链接；运行 `npm test`、`npm run typecheck`。
+- [ ] 完成读者创建/编辑/密码重置/软删除/恢复流程；验证：固定初始密码 `123456`、邮箱冲突规则、选填删除原因与恢复清理、会话撤销、用户行字段更新均符合 Issue 11；不写逐次操作日志，运行 `npm test`。
+- [ ] 暂停读者自助删除页面及 API；验证：reader/admin/匿名均不能触发自助硬删除，账号和关联数据仅由管理员软删除保留。
 - [ ] 完成受限 MDX 解析、图片持久化和文章版本工作流；验收细节见 Issue 05。
-- [ ] 完成管理员文章管理页，并按 Issue 11 拆分账号、文章和 AI 设置页面；验证：管理员授权覆盖页面与接口，单页不堆叠无关流程，运行 `npm test`、`npm run typecheck`。
+- [ ] 将管理员文章管理页接入 Issue 11 公共左右布局；验证：Issue 05 的文章操作规则保持不变，运行 `npm test`、`npm run typecheck`。AI 设置与问答暂保留占位，本次不启动 Issue 07。
 
 ### C. 收藏
 
@@ -246,7 +260,7 @@ type SearchResult = {
 ## 4. 完成定义
 
 - 公共页面只暴露当前已发布版本，匿名访问不依赖账号；草稿、下架及已删除内容不进入公开查询。只有负责人本人作为唯一管理员可以上传、预览、发布、下架和恢复文章。
-- 账号和收藏在服务端授权/限速验收后可通过公网 IP/HTTP 使用，reader/admin 均可收藏；问答仅 admin 且受模型政策、预算门槛控制。管理写操作须有服务端管理员授权、限速和审计；HTTPS 不是单独的关闭条件。目标环境未验收前不得宣称已公网开放。
+- 账号和收藏在服务端授权/限速验收后可通过公网 IP/HTTP 使用，reader/admin 均可收藏；问答仅 admin 且受模型政策、预算门槛控制。需审计的管理操作须有服务端管理员授权、限速和审计；读者账号管理仅保留用户表字段。HTTPS 不是单独的关闭条件。目标环境未验收前不得宣称已公网开放。
 - 数据迁移可重复应用；关键事务、授权、所有权、并发限额、失败回退和安全边界有自动化测试覆盖。
 - `npm run lint`、`npm run typecheck`、`npm test`、`npm run build` 通过；目标环境发布、成本及恢复演练记录齐全。
 - Wiki 不属于无条件 V1 交付项；未通过 ADR-0003 评估或未获负责人批准时，原文问答是唯一实现方案。
@@ -259,4 +273,5 @@ type SearchResult = {
 - [ADR-0004：通过管理页上传 MDX 维护文章](./adr/0004-admin-uploaded-mdx-articles.md)。
 - [ADR-0005：密码账号不依赖邮件服务](./adr/0005-password-accounts-with-email-links.md)。
 - [ADR-0006：公网 IP/HTTP 与角色功能边界](./adr/0006-ip-http-and-role-feature-boundaries.md)。
+- [ADR-0007：头像存放在华为云服务器私有持久目录](./adr/0007-private-avatar-storage-on-huawei-server.md)。
 - 相关实施细化与依赖：[`.scratch/personal-tech-blog/spec.md`](../.scratch/personal-tech-blog/spec.md) 及其中 Issue 01-11。出现冲突时以 ADR 和负责人明确决策为准；不要通过本规格静默改写架构决策。
