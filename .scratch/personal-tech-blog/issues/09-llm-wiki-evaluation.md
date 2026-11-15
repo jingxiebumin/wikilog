@@ -1,10 +1,18 @@
 # Issue 09: 评估 LLM Wiki 是否改善问答
 
-Status: ready-for-agent
+Status: wontfix
 Type: research
 Blocked by: 07
 
 ## 目标
+
+负责人于 2026-11-15 决定取消本项原文问答与 LLM Wiki 的比较评估；不准备题集、人工评分或评估报告。本 Issue 不执行。此决定不构成对 Issue 10 的批准或实现授权。
+
+## 关闭说明
+
+本 Issue 按负责人决定标记为 `wontfix`。若未来重新考虑 LLM Wiki，需另行明确需求与评估/批准路径；Issue 10 保持原状态。
+
+## 历史目标（已取消）
 
 在同一批文章和固定问题集上比较直接检索原文与 LLM Wiki 方案，为是否实现 Wiki 提供可复核证据。
 
