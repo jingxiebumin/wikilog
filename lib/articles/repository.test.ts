@@ -15,7 +15,7 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-import { publishArticleVersion, saveArticleDraft, setArticleVisibility } from "./repository";
+import { findArticleImageAccess, publishArticleVersion, saveArticleDraft, setArticleVisibility } from "./repository";
 import type { ParsedArticle } from "./parser";
 
 const parsed = (title: string): ParsedArticle => ({
@@ -38,7 +38,7 @@ describe("article version repository", () => {
   beforeEach(async () => {
     database = new PGlite();
     state.database = database;
-    for (const file of ["0001_initial.sql", "0002_audit_fields.sql", "0003_reader_accounts.sql", "0004_article_sources.sql"]) {
+    for (const file of ["0001_initial.sql", "0002_audit_fields.sql", "0003_reader_accounts.sql", "0004_article_sources.sql", "0009_article_images.sql"]) {
       await database.exec(await readFile(path.join(process.cwd(), "db/migrations", file), "utf8"));
     }
     const admin = await database.query<{ id: string }>(`
@@ -94,5 +94,27 @@ describe("article version repository", () => {
       FROM articles
     `, [version.rows[0].id]);
     expect(restored.rows[0].visible).toBe(true);
+  });
+
+  it("keeps image assets scoped to versions and exposes only the current published article", async () => {
+    await saveArticleDraft({
+      ...parsed("First"), sourceMdx: "source-v1",
+      images: [{ key: "image-key-v1.jpg", name: "chart.jpg", contentType: "image/jpeg" }],
+    }, adminId);
+    const first = await database.query<{ id: string }>("SELECT id FROM article_versions WHERE version_number = 1");
+    await expect(findArticleImageAccess("image-key-v1.jpg")).resolves.toEqual({ published: false });
+    await publishArticleVersion(first.rows[0].id, adminId);
+    await expect(findArticleImageAccess("image-key-v1.jpg")).resolves.toEqual({ published: true });
+
+    await saveArticleDraft({
+      ...parsed("Second"), sourceMdx: "source-v2",
+      images: [{ key: "image-key-v2.jpg", name: "chart.jpg", contentType: "image/jpeg" }],
+    }, adminId);
+    const second = await database.query<{ id: string }>("SELECT id FROM article_versions WHERE version_number = 2");
+    await publishArticleVersion(second.rows[0].id, adminId);
+    await expect(findArticleImageAccess("image-key-v1.jpg")).resolves.toEqual({ published: false });
+    await expect(findArticleImageAccess("image-key-v2.jpg")).resolves.toEqual({ published: true });
+    await setArticleVisibility("release-flow", "hide", adminId);
+    await expect(findArticleImageAccess("image-key-v2.jpg")).resolves.toEqual({ published: false });
   });
 });

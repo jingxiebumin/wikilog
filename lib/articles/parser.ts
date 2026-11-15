@@ -75,7 +75,7 @@ function requiredString(metadata: Record<string, string | string[]>, key: string
   return (value as string).trim();
 }
 
-function parseBody(markdown: string): ArticleBlock[] {
+function parseBody(markdown: string, imageAssets: Record<string, string>): ArticleBlock[] {
   const lines = markdown.split("\n");
   const blocks: ArticleBlock[] = [];
   let paragraph: string[] = [];
@@ -113,14 +113,21 @@ function parseBody(markdown: string): ArticleBlock[] {
     if (/<\/?[A-Za-z][^>]*>|<!DOCTYPE|<script\b|\b(import|export)\s/m.test(trimmed)) {
       fail("正文包含不支持的 HTML、JSX 或可执行语法。");
     }
-    if (/!?\[[^\]]*\]\([^)]*\)/.test(trimmed)) {
-      const image = /!\[[^\]]*\]\(([^)]*)\)/.exec(trimmed);
-      if (image) {
-        const target = image[1].trim();
-        if (!/^https:\/\//i.test(target)) fail("外链图片必须使用 HTTPS；站内图片暂不支持。");
-        fail("外链图片暂未开放，请移除图片语法。");
+    const image = /^!\[([^\]]*)\]\(([^)]*)\)$/.exec(trimmed);
+    if (image) {
+      flushParagraph(); flushList();
+      const target = image[2].trim();
+      if (/^https:\/\//i.test(target)) {
+        blocks.push({ type: "image", src: target, alt: image[1] });
+      } else {
+        const relative = /^\.\/images\/([^/\\?#]+)$/.exec(target);
+        const key = relative ? imageAssets[relative[1]] : undefined;
+        if (!key) fail("站内图片必须在本次上传中提供，并使用 ./images/文件名 引用。");
+        blocks.push({ type: "image", src: `/api/article-images/${key}`, alt: image[1] });
       }
+      continue;
     }
+    if (/!\[[^\]]*\]\(/.test(trimmed)) fail("图片语法必须单独占一行且格式有效。");
     for (const link of trimmed.matchAll(/\[[^\]]*\]\(([^)]*)\)/g)) {
       if (!/^https?:\/\//i.test(link[1].trim())) fail("文章链接只允许 HTTP 或 HTTPS 地址。");
     }
@@ -143,7 +150,7 @@ function parseBody(markdown: string): ArticleBlock[] {
   return blocks;
 }
 
-export function parseArticleSource(source: string, categorySlugs: string[]): ParsedArticle {
+export function parseArticleSource(source: string, categorySlugs: string[], imageAssets: Record<string, string> = {}): ParsedArticle {
   if (Buffer.byteLength(source, "utf8") > 1024 * 1024) fail("MDX 文件不能超过 1 MiB。");
   const { metadata, body: markdown } = parseFrontmatter(source);
   const allowedKeys = new Set(["slug", "title", "summary", "publishedAt", "category", "tags"]);
@@ -167,8 +174,8 @@ export function parseArticleSource(source: string, categorySlugs: string[]): Par
     fail("tags 必须是由小写英文、数字和连字符组成的列表。");
   }
   const tags = [...new Set((tagsValue as string[] | undefined) ?? [])];
-  const body = parseBody(markdown);
-  const contentText = body.map((block) => block.type === "list" ? block.items.join(" ") : block.type === "code" ? block.code : block.text).join(" ");
+  const body = parseBody(markdown, imageAssets);
+  const contentText = body.map((block) => block.type === "list" ? block.items.join(" ") : block.type === "code" ? block.code : block.type === "image" ? block.alt : block.text).join(" ");
   const wordCount = contentText.match(/[\p{Script=Han}]|[A-Za-z0-9]+/gu)?.length ?? 1;
   return {
     slug, title, summary, publishedAt, category, tags, content: body, contentText,

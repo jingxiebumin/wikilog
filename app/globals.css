@@ -1528,6 +1528,9 @@ input:focus-visible {
   font-size: 15px;
   line-height: 1.95;
 }
+.article-inline-image { margin: 28px 0; }
+.article-inline-image img { display: block; width: 100%; height: auto; max-height: 720px; object-fit: contain; }
+.article-inline-image figcaption { margin-top: 6px; color: var(--muted); font-size: 12px; }
 
 .article-body > p {
   margin: 0 0 22px;

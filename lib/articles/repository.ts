@@ -3,6 +3,7 @@ import type { PoolClient, QueryResultRow } from "pg";
 import { pool } from "@/lib/db";
 import type { ArticleBlock } from "@/lib/content";
 import type { ParsedArticle } from "./parser";
+import type { StoredArticleImage } from "./image-storage";
 
 type Db = NonNullable<typeof pool>;
 type AdminArticleVersion = ParsedArticle & { id: string; versionNumber: number; current: boolean; status: "draft" | "published" | "archived"; visibility: "visible" | "hidden" | "deleted"; sourceMdx: string };
@@ -67,7 +68,7 @@ export async function listAdminArticles() {
   return result.rows.map(mapAdminArticleVersion);
 }
 
-export async function saveArticleDraft(input: ParsedArticle & { sourceMdx: string }, actorId: string): Promise<void> {
+export async function saveArticleDraft(input: ParsedArticle & { sourceMdx: string; images?: StoredArticleImage[] }, actorId: string): Promise<void> {
   const client: PoolClient = await database().connect();
   try {
     await client.query("BEGIN");
@@ -108,6 +109,13 @@ export async function saveArticleDraft(input: ParsedArticle & { sourceMdx: strin
       input.publishedAt, input.sourceMdx, actorId,
     ]);
 
+    for (const image of input.images ?? []) {
+      await client.query(`
+        INSERT INTO article_version_assets (article_version_id, storage_key, original_name, content_type)
+        VALUES ($1, $2, $3, $4)
+      `, [version.rows[0].id, image.key, image.name, image.contentType]);
+    }
+
     for (const tagSlug of input.tags) {
       const tag = await client.query<{ id: string }>(`
         INSERT INTO tags (slug, name, created_by, updated_by)
@@ -128,6 +136,19 @@ export async function saveArticleDraft(input: ParsedArticle & { sourceMdx: strin
   } finally {
     client.release();
   }
+}
+
+export async function findArticleImageAccess(storageKey: string): Promise<{ published: boolean } | undefined> {
+  const result = await database().query<{ published: boolean }>(`
+    SELECT COALESCE(a.current_published_version_id = v.id
+      AND a.archived_at IS NULL AND a.deleted_at IS NULL AND a.del_flag = false, false) AS published
+    FROM article_version_assets asset
+    JOIN article_versions v ON v.id = asset.article_version_id AND v.del_flag = false
+    JOIN articles a ON a.id = v.article_id
+    WHERE asset.storage_key = $1
+    LIMIT 1
+  `, [storageKey]);
+  return result.rows[0];
 }
 
 export async function publishArticleVersion(versionId: string, actorId: string): Promise<void> {

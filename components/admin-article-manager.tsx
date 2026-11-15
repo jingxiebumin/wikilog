@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import type { ArticleBlock } from "@/lib/content";
 
 type ArticleVersion = {
@@ -70,8 +71,9 @@ export function AdminArticleManager({ initialArticles }: { initialArticles: Arti
         void upload(formData);
         event.currentTarget.reset();
       }}>
-        <div><h2>上传文章草稿</h2><p>仅接收最多 1 MB 的受限 MDX 文件。图片上传在持久存储验收后开放。</p></div>
+        <div><h2>上传文章草稿</h2><p>上传受限 MDX 与正文引用的静态图片。图片使用 `![说明](./images/文件名)` 单独成行。</p></div>
         <label className="form-field" htmlFor="article-source"><span>MDX 文件</span><input id="article-source" accept=".mdx,text/markdown,text/plain" name="file" required type="file" /></label>
+        <label className="form-field" htmlFor="article-images"><span>文章图片</span><input id="article-images" accept="image/jpeg,image/png,image/webp" multiple name="images" type="file" /></label>
         <button disabled={busy} type="submit">{busy ? "处理中…" : "保存为草稿"}</button>
       </form>
       {error ? <p className="form-error" role="alert">{error}</p> : null}
@@ -98,7 +100,9 @@ export function AdminArticleManager({ initialArticles }: { initialArticles: Arti
                   ? <ul key={index}>{block.items.map((item) => <li key={item}>{item}</li>)}</ul>
                   : block.type === "code"
                     ? <pre key={index}><code>{block.code}</code></pre>
-                    : <p key={index}>{block.text}</p>)}
+                    : block.type === "image"
+                      ? <figure className="article-inline-image" key={index}><Image alt={block.alt} height={900} src={block.src} unoptimized width={1200} /><figcaption>{block.alt}</figcaption></figure>
+                      : <p key={index}>{block.text}</p>)}
               <details><summary>查看 MDX 源文</summary><pre>{article.sourceMdx || "当前版本没有上传源文。"}</pre></details>
             </div> : null}
           </article>

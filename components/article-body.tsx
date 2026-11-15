@@ -1,4 +1,5 @@
 import type { ArticleBlock } from "@/lib/content";
+import Image from "next/image";
 
 export function ArticleBody({ blocks }: { blocks: ArticleBlock[] }) {
   return (
@@ -15,6 +16,7 @@ export function ArticleBody({ blocks }: { blocks: ArticleBlock[] }) {
             </pre>
           );
         }
+        if (block.type === "image") return <figure className="article-inline-image" key={`${block.type}-${index}`}><Image alt={block.alt} height={900} src={block.src} unoptimized width={1200} /><figcaption>{block.alt}</figcaption></figure>;
         return <p key={`${block.type}-${index}`}>{block.text}</p>;
       })}
     </div>

@@ -9,7 +9,8 @@ export type ArticleBlock =
   | { type: "paragraph"; text: string }
   | { type: "heading"; text: string }
   | { type: "list"; items: string[] }
-  | { type: "code"; language: string; code: string };
+  | { type: "code"; language: string; code: string }
+  | { type: "image"; src: string; alt: string };
 
 export type Article = {
   slug: string;
@@ -272,6 +273,7 @@ export const getArticleText = (article: Article) =>
     .map((block) => {
       if (block.type === "list") return block.items.join(" ");
       if (block.type === "code") return block.code;
+      if (block.type === "image") return block.alt;
       return block.text;
     })
     .join(" ");
