@@ -44,4 +44,26 @@ describe("reader account migration", () => {
       { email: "legacy@example.test", status: "active" },
     ]);
   });
+
+  it("stores private profile fields and allows deleted email addresses to be reused", async () => {
+    await database.exec(await readFile(path.join(process.cwd(), "db/migrations/0008_personal_center.sql"), "utf8"));
+
+    const columns = await database.query<{ column_name: string }>(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'users'
+        AND column_name IN ('phone', 'gender', 'introduction', 'avatar_key', 'deleted_reason')
+      ORDER BY column_name
+    `);
+    expect(columns.rows.map((row) => row.column_name)).toEqual([
+      "avatar_key", "deleted_reason", "gender", "introduction", "phone",
+    ]);
+
+    await database.query("UPDATE users SET del_flag = true WHERE email = 'legacy@example.test'");
+    await database.query("INSERT INTO users (email, display_name, password_hash, status) VALUES ('legacy@example.test', 'New account', 'hash', 'active')");
+
+    const active = await database.query<{ display_name: string }>(`
+      SELECT display_name FROM users WHERE lower(email) = lower('legacy@example.test') AND del_flag = false
+    `);
+    expect(active.rows).toEqual([{ display_name: "New account" }]);
+  });
 });

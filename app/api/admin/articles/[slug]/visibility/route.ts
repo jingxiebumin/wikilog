@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/service";
 import { AuthError } from "@/lib/auth/errors";
 import { adminChangeArticleVisibility } from "@/lib/articles/service";
-import { authErrorResponse } from "@/lib/auth/route-utils";
+import { adminErrorResponse } from "@/lib/auth/route-utils";
 
 export async function POST(request: Request, context: { params: Promise<{ slug: string }> }) {
   try {
@@ -15,6 +15,6 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
     await adminChangeArticleVisibility(actor, slug, body.action);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return authErrorResponse(error);
+    return adminErrorResponse(error);
   }
 }

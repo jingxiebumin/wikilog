@@ -131,7 +131,7 @@ export function RegisterForm({ initialError = "" }: { initialError?: string }) {
   );
 }
 
-export function PasswordForm({ initialError = "" }: { initialError?: string }) {
+export function PasswordForm({ initialError = "", requireDisplayName = false }: { initialError?: string; requireDisplayName?: boolean }) {
   const router = useRouter();
   const [error, setError] = useState(initialError);
   const [currentPasswordError, setCurrentPasswordError] = useState("");
@@ -143,20 +143,25 @@ export function PasswordForm({ initialError = "" }: { initialError?: string }) {
     event.preventDefault();
     const form = event.currentTarget;
     const currentPassword = formValue(form, "currentPassword");
+    const displayName = formValue(form, "displayName");
     const password = formValue(form, "password");
     const confirmation = formValue(form, "confirmation");
     const nextCurrentPasswordError = requiredError(currentPassword, "当前密码");
+    const nextDisplayNameError = requireDisplayName ? displayNameError(displayName) : "";
     const nextPasswordError = passwordError(password);
     const nextConfirmationError = confirmationError(password, confirmation);
     setError("");
     setCurrentPasswordError(nextCurrentPasswordError);
     setPasswordFieldError(nextPasswordError);
     setConfirmationFieldError(nextConfirmationError);
-    if (nextCurrentPasswordError || nextPasswordError || nextConfirmationError) return;
+    if (nextCurrentPasswordError || nextDisplayNameError || nextPasswordError || nextConfirmationError) {
+      if (nextDisplayNameError) setError(nextDisplayNameError);
+      return;
+    }
     setSubmitting(true);
     try {
-      await jsonRequest("/api/auth/password", { currentPassword, password, confirmation });
-      router.replace("/");
+      await jsonRequest("/api/auth/password", { displayName, currentPassword, password, confirmation });
+      router.replace("/account");
       router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "密码修改无法完成，请稍后重试。");
@@ -168,10 +173,11 @@ export function PasswordForm({ initialError = "" }: { initialError?: string }) {
   return (
     <form autoComplete="on" className="account-form" onSubmit={submit}>
       <FormError message={error} />
+      {requireDisplayName ? <label className="form-field" htmlFor="first-login-display-name"><span>昵称</span><input autoComplete="nickname" id="first-login-display-name" maxLength={80} name="displayName" placeholder="设置昵称" required /></label> : null}
       <PasswordInput autoComplete="current-password" error={currentPasswordError} label="当前密码" name="currentPassword" onBlur={(event) => setCurrentPasswordError(requiredError(event.currentTarget.value, "当前密码"))} onChange={() => setCurrentPasswordError("")} placeholder="输入当前密码" required />
       <PasswordInput autoComplete="new-password" error={passwordFieldError} label="新密码" name="password" minLength={9} onBlur={(event) => setPasswordFieldError(passwordError(event.currentTarget.value))} onChange={() => setPasswordFieldError("")} placeholder="至少 9 位密码" required />
       <PasswordInput autoComplete="new-password" error={confirmationFieldError} label="确认新密码" name="confirmation" onBlur={(event) => { const password = formValue(event.currentTarget.form as HTMLFormElement, "password"); setConfirmationFieldError(confirmationError(password, event.currentTarget.value)); }} onChange={() => setConfirmationFieldError("")} placeholder="再次输入新密码" required />
-      <button disabled={submitting} type="submit">{submitting ? "保存中…" : "保存密码"}</button>
+      <div className="profile-form-actions"><button disabled={submitting} type="submit">{submitting ? "保存中…" : "保存密码"}</button><button className="button-secondary" disabled={submitting} onClick={() => { setError(""); setCurrentPasswordError(""); setPasswordFieldError(""); setConfirmationFieldError(""); }} type="reset">重置</button></div>
     </form>
   );
 }
@@ -197,7 +203,7 @@ export function EmailForm({ currentEmail }: { currentEmail: string }) {
     setSubmitting(true);
     try {
       await jsonRequest("/api/auth/email", { currentPassword, email });
-      router.push("/account");
+      router.replace("/login");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "邮箱修改无法完成，请稍后重试。");
     } finally {
@@ -212,7 +218,7 @@ export function EmailForm({ currentEmail }: { currentEmail: string }) {
       <PasswordInput autoComplete="current-password" error={currentPasswordError} label="当前密码" name="currentPassword" onBlur={(event) => setCurrentPasswordError(requiredError(event.currentTarget.value, "当前密码"))} onChange={() => setCurrentPasswordError("")} placeholder="输入当前密码" required />
       <label className="form-field" htmlFor="new-email"><span>新邮箱</span><input aria-describedby={emailFieldError ? "new-email-error" : undefined} aria-invalid={Boolean(emailFieldError)} autoComplete="email" id="new-email" name="email" onBlur={(event) => setEmailFieldError(emailError(event.currentTarget.value))} onChange={() => setEmailFieldError("")} placeholder="new-name@example.com" required type="email" /></label>
       {emailFieldError ? <span className="field-error" id="new-email-error" role="alert">{emailFieldError}</span> : null}
-      <button disabled={submitting} type="submit">{submitting ? "保存中…" : "保存邮箱"}</button>
+      <div className="profile-form-actions"><button disabled={submitting} type="submit">{submitting ? "保存中…" : "保存邮箱"}</button><button className="button-secondary" disabled={submitting} onClick={() => { setError(""); setEmailFieldError(""); setCurrentPasswordError(""); }} type="reset">重置</button></div>
     </form>
   );
 }

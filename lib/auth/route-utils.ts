@@ -19,10 +19,18 @@ export function authErrorResponse(error: unknown): NextResponse {
       : authError?.code === "RATE_LIMITED" ? 429
         : authError?.code === "CONFLICT" ? 409
           : authError?.code === "DATABASE_UNAVAILABLE" ? 503
+            : authError?.code === "STORAGE_UNAVAILABLE" ? 503
             : authError?.code === "NOT_FOUND" ? 404 : 400;
   const response = NextResponse.json({ error: publicAuthMessage(error) }, { status });
   if (authError?.retryAfterSeconds) response.headers.set("Retry-After", String(authError.retryAfterSeconds));
   return response;
+}
+
+export function adminErrorResponse(error: unknown): NextResponse {
+  if (error instanceof AuthError && (error.code === "UNAUTHENTICATED" || error.code === "FORBIDDEN")) {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
+  return authErrorResponse(error);
 }
 
 export function redirectWithError(request: Request, error: unknown, fallback: string): NextResponse {

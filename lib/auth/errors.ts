@@ -9,7 +9,8 @@ export type AuthErrorCode =
   | "CONFLICT"
   | "NOT_FOUND"
   | "CONFIRMATION_REQUIRED"
-  | "DATABASE_UNAVAILABLE";
+  | "DATABASE_UNAVAILABLE"
+  | "STORAGE_UNAVAILABLE";
 
 export class AuthError extends Error {
   constructor(

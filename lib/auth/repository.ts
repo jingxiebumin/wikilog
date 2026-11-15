@@ -31,7 +31,56 @@ const mapUser = (row: UserRow): AuthUser => ({
 
 export type UserWithPassword = AuthUser & { passwordHash: string | null };
 
-export type ReaderAccountSummary = Pick<AuthUser, "id" | "email" | "displayName" | "status" | "passwordResetRequired">;
+export type ReaderAccountSummary = Pick<AuthUser, "id" | "email" | "displayName" | "status" | "passwordResetRequired"> & {
+  createdAt: Date;
+  phone: string | null;
+  gender: PersonalProfile["gender"];
+  delFlag: boolean;
+};
+
+export type PersonalProfile = {
+  id: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  phone: string | null;
+  gender: "male" | "female" | "other" | "undisclosed" | null;
+  introduction: string | null;
+  avatarKey: string | null;
+  createdAt: Date;
+};
+
+type PersonalProfileRow = QueryResultRow & {
+  id: string;
+  email: string;
+  display_name: string;
+  role: UserRole;
+  phone: string | null;
+  gender: PersonalProfile["gender"];
+  introduction: string | null;
+  avatar_key: string | null;
+  created_at: Date;
+};
+
+const mapPersonalProfile = (row: PersonalProfileRow): PersonalProfile => ({
+  id: row.id,
+  email: row.email,
+  displayName: row.display_name,
+  role: row.role,
+  phone: row.phone,
+  gender: row.gender,
+  introduction: row.introduction,
+  avatarKey: row.avatar_key,
+  createdAt: row.created_at,
+});
+
+const mapReaderSummary = (row: PersonalProfileRow & UserRow & { del_flag: boolean }): ReaderAccountSummary => ({
+  ...mapUser(row),
+  createdAt: row.created_at,
+  phone: row.phone,
+  gender: row.gender,
+  delFlag: row.del_flag,
+});
 
 const mapUserWithPassword = (row: UserRow): UserWithPassword => ({
   ...mapUser(row),
@@ -53,13 +102,58 @@ export async function findUserById(id: string): Promise<UserWithPassword | undef
   return result.rows[0] ? mapUserWithPassword(result.rows[0]) : undefined;
 }
 
-export async function listReaderAccounts(): Promise<ReaderAccountSummary[]> {
-  const result = await getDatabase().query<UserRow>(`
-    ${userSelect}
-    WHERE role = 'reader'
+export async function getOwnProfile(userId: string): Promise<PersonalProfile | undefined> {
+  const result = await getDatabase().query<PersonalProfileRow>(`
+    SELECT id, email, display_name, role, phone, gender, introduction, avatar_key, created_at
+    FROM users
+    WHERE id = $1 AND del_flag = false
+  `, [userId]);
+  return result.rows[0] ? mapPersonalProfile(result.rows[0]) : undefined;
+}
+
+export async function updateOwnProfile(input: {
+  userId: string;
+  displayName: string;
+  phone: string | null;
+  gender: PersonalProfile["gender"];
+  introduction: string | null;
+}): Promise<PersonalProfile | undefined> {
+  const result = await getDatabase().query<PersonalProfileRow>(`
+    UPDATE users
+    SET display_name = $2, phone = $3, gender = $4, introduction = $5,
+        updated_at = now(), updated_by = $1
+    WHERE id = $1 AND status = 'active' AND del_flag = false
+    RETURNING id, email, display_name, role, phone, gender, introduction, avatar_key, created_at
+  `, [input.userId, input.displayName, input.phone, input.gender, input.introduction]);
+  return result.rows[0] ? mapPersonalProfile(result.rows[0]) : undefined;
+}
+
+export async function updateOwnAvatar(userId: string, avatarKey: string): Promise<string | undefined> {
+  const result = await getDatabase().query<{ avatar_key: string | null }>(`
+    UPDATE users SET avatar_key = $2, updated_at = now(), updated_by = $1
+    WHERE id = $1 AND status = 'active' AND del_flag = false
+    RETURNING avatar_key
+  `, [userId, avatarKey]);
+  return result.rows[0]?.avatar_key ?? undefined;
+}
+
+export async function getOwnAvatarKey(userId: string): Promise<string | undefined> {
+  const result = await getDatabase().query<{ avatar_key: string | null }>(`
+    SELECT avatar_key FROM users WHERE id = $1 AND status = 'active' AND del_flag = false
+  `, [userId]);
+  return result.rows[0]?.avatar_key ?? undefined;
+}
+
+export async function listReaderAccounts(input: { includeDeleted?: boolean; search?: string } = {}): Promise<ReaderAccountSummary[]> {
+  const result = await getDatabase().query<PersonalProfileRow & UserRow & { status: UserStatus; password_reset_required: boolean; del_flag: boolean }>(`
+    SELECT id, email, display_name, password_hash, role, status, password_reset_required,
+      created_at, phone, gender, introduction, avatar_key, del_flag
+    FROM users
+    WHERE role = 'reader' AND del_flag = $1
+      AND ($2 = '' OR lower(email) LIKE '%' || lower($2) || '%' OR lower(display_name) LIKE '%' || lower($2) || '%')
     ORDER BY created_at DESC
-  `);
-  return result.rows.map(mapUser);
+  `, [input.includeDeleted ?? false, input.search?.trim() ?? ""]);
+  return result.rows.map(mapReaderSummary);
 }
 
 export async function createReaderAccount(input: {
@@ -89,6 +183,8 @@ export async function updatePassword(
   userId: string,
   passwordHash: string,
   clearResetRequirement: boolean,
+  preserveSessionId?: string,
+  displayName?: string,
 ): Promise<void> {
   const database = getDatabase();
   const client = await database.connect();
@@ -98,9 +194,10 @@ export async function updatePassword(
       UPDATE users
       SET password_hash = $2,
           password_reset_required = CASE WHEN $3 THEN false ELSE password_reset_required END,
+          display_name = COALESCE($4, display_name),
           updated_at = now(), updated_by = $1
       WHERE id = $1 AND status = 'active' AND del_flag = false
-    `, [userId, passwordHash, clearResetRequirement]);
+    `, [userId, passwordHash, clearResetRequirement, displayName ?? null]);
     if (clearResetRequirement) {
       await client.query(`
         UPDATE admin_password_resets
@@ -108,6 +205,12 @@ export async function updatePassword(
         WHERE target_user_id = $1 AND used_at IS NULL AND result = 'success'
       `, [userId]);
     }
+    await client.query(`
+      UPDATE reader_sessions
+      SET revoked_at = now()
+      WHERE user_id = $1 AND revoked_at IS NULL
+        AND ($2::uuid IS NULL OR id <> $2)
+    `, [userId, preserveSessionId ?? null]);
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");
@@ -171,13 +274,48 @@ export async function createReaderByAdmin(input: {
   displayName: string;
   passwordHash: string;
   forcePasswordChange: boolean;
+  operatorUserId: string;
 }): Promise<AuthUser> {
   const result = await getDatabase().query<UserRow>(`
-    INSERT INTO users (email, display_name, password_hash, role, status, password_reset_required)
-    VALUES ($1, $2, $3, 'reader', 'active', $4)
+    INSERT INTO users (email, display_name, password_hash, role, status, password_reset_required, created_by, updated_by)
+    VALUES ($1, $2, $3, 'reader', 'active', $4, $5, $5)
     RETURNING id, email, display_name, password_hash, role, status, password_reset_required
-  `, [input.email, input.displayName, input.passwordHash, input.forcePasswordChange]);
+  `, [input.email, input.displayName, input.passwordHash, input.forcePasswordChange, input.operatorUserId]);
   return mapUser(result.rows[0]);
+}
+
+export async function softDeleteReaderAccount(userId: string, operatorUserId: string, reason: string | null): Promise<boolean> {
+  const database = getDatabase();
+  const client = await database.connect();
+  try {
+    await client.query("BEGIN");
+    const deleted = await client.query(`
+      UPDATE users
+      SET del_flag = true, deleted_reason = $3, updated_at = now(), updated_by = $2
+      WHERE id = $1 AND role = 'reader' AND del_flag = false
+    `, [userId, operatorUserId, reason]);
+    if (deleted.rowCount !== 1) {
+      await client.query("ROLLBACK");
+      return false;
+    }
+    await client.query("UPDATE reader_sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL", [userId]);
+    await client.query("COMMIT");
+    return true;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function restoreReaderAccount(userId: string, operatorUserId: string): Promise<boolean> {
+  const result = await getDatabase().query(`
+    UPDATE users
+    SET del_flag = false, deleted_reason = NULL, updated_at = now(), updated_by = $2
+    WHERE id = $1 AND role = 'reader' AND del_flag = true
+  `, [userId, operatorUserId]);
+  return result.rowCount === 1;
 }
 
 export async function setUserStatus(
@@ -230,7 +368,9 @@ export async function updateReaderProfile(input: {
   operatorUserId: string;
   email: string;
   displayName: string;
-  reason: string;
+  phone?: string | null;
+  gender?: PersonalProfile["gender"];
+  reason?: string;
 }): Promise<ReaderAccountSummary | undefined> {
   const client = await getDatabase().connect();
   try {
@@ -246,22 +386,17 @@ export async function updateReaderProfile(input: {
       return undefined;
     }
     const emailChanged = previous.email.toLowerCase() !== input.email.toLowerCase();
-    const updated = await client.query<UserRow>(`
-      UPDATE users SET email = $2, display_name = $3, updated_at = now(), updated_by = $4
+    const updated = await client.query<PersonalProfileRow & UserRow & { del_flag: boolean }>(`
+      UPDATE users SET email = $2, display_name = $3, phone = $5, gender = $6, updated_at = now(), updated_by = $4
       WHERE id = $1
-      RETURNING id, email, display_name, password_hash, role, status, password_reset_required
-    `, [input.targetUserId, input.email, input.displayName, input.operatorUserId]);
+      RETURNING id, email, display_name, password_hash, role, status, password_reset_required,
+        created_at, phone, gender, introduction, avatar_key, del_flag
+    `, [input.targetUserId, input.email, input.displayName, input.operatorUserId, input.phone ?? null, input.gender ?? null]);
     if (emailChanged) {
       await client.query("UPDATE reader_sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL", [input.targetUserId]);
     }
-    await client.query(`
-      INSERT INTO admin_reader_profile_changes (
-        operator_user_id, target_user_id, previous_email, new_email,
-        previous_display_name, new_display_name, reason
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [input.operatorUserId, input.targetUserId, previous.email, input.email, previous.display_name, input.displayName, input.reason]);
     await client.query("COMMIT");
-    return mapUser(updated.rows[0]);
+    return mapReaderSummary(updated.rows[0]);
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -274,7 +409,7 @@ export async function resetReaderPassword(input: {
   operatorUserId: string;
   targetUserId: string;
   passwordHash: string;
-  reason: string;
+  reason?: string;
 }): Promise<void> {
   const database = getDatabase();
   const client: PoolClient = await database.connect();
@@ -288,10 +423,6 @@ export async function resetReaderPassword(input: {
     `, [input.operatorUserId, input.targetUserId, input.passwordHash]);
     if (!target.rows[0]) throw new Error("Target reader account was not found or is disabled.");
     await client.query("UPDATE reader_sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL", [input.targetUserId]);
-    await client.query(`
-      INSERT INTO admin_password_resets (operator_user_id, target_user_id, target_email, reason, result)
-      SELECT $1, $2, email, $3, 'success' FROM users WHERE id = $2
-    `, [input.operatorUserId, input.targetUserId, input.reason]);
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");

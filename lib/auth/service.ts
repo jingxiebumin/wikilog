@@ -10,18 +10,24 @@ import {
   findSessionByTokenHash,
   findUserByEmail,
   findUserById,
+  getOwnProfile as getOwnProfileRecord,
+  getOwnAvatarKey as getOwnAvatarKeyRecord,
   resetReaderPassword,
+  restoreReaderAccount,
   revokeAllSessions,
   revokeSession,
   setUserStatus,
   updateEmail as updateEmailRecord,
+  updateOwnProfile as updateOwnProfileRecord,
+  updateOwnAvatar as updateOwnAvatarRecord,
   updateReaderProfile,
   updatePassword as updatePasswordRecord,
   listReaderAccounts,
+  softDeleteReaderAccount,
   type ReaderAccountSummary,
 } from "./repository";
 import { AuthError } from "./errors";
-import { DUMMY_PASSWORD_HASH, generateTemporaryPassword, hashPassword, verifyPassword } from "./password";
+import { DUMMY_PASSWORD_HASH, hashPassword, verifyPassword } from "./password";
 import { consumeRateLimits, RATE_LIMIT_RULES } from "./rate-limit";
 import type { AuthUser, RequestMeta, Session } from "./types";
 import {
@@ -46,19 +52,6 @@ const getDatabase = () => {
 
 const requirePublicAuthEnabled = (): void => {
   if (!publicAuthEnabled) throw new AuthError("DATABASE_UNAVAILABLE", "账号功能暂未启用。");
-};
-
-const enforceRateLimits = async (
-  action: "register" | "login" | "adminReset",
-  email: string,
-  ip: string,
-): Promise<void> => {
-  const database = getDatabase();
-  const rules = RATE_LIMIT_RULES[action];
-  await consumeRateLimits(database, [
-    { bucket: `${action}:account:${normalizeEmail(email)}`, rule: rules.account },
-    { bucket: `${action}:ip:${ip}`, rule: rules.ip },
-  ]);
 };
 
 const enforceAdminManageRateLimits = async (targetUserId: string, ip: string): Promise<void> => {
@@ -166,7 +159,9 @@ export async function changeEmail(input: {
     throw new AuthError("INVALID_CREDENTIALS", "当前密码不正确。");
   }
   try {
-    return await updateEmailRecord(input.userId, email);
+    const updated = await updateEmailRecord(input.userId, email);
+    await revokeAllSessions(input.userId);
+    return updated;
   } catch (error) {
     if (isUniqueViolation(error)) throw new AuthError("CONFLICT", "该邮箱已被使用。");
     throw error;
@@ -175,18 +170,74 @@ export async function changeEmail(input: {
 
 export async function changePassword(input: {
   userId: string;
+  sessionId: string;
+  displayName?: string;
   currentPassword: string;
   password: string;
   confirmation: string;
-}): Promise<void> {
+}): Promise<{ rotatedSession?: { token: string; expiresAt: Date } }> {
   const password = validatePassword(input.password);
   requireSamePassword(password, input.confirmation);
   const user = await findUserById(input.userId);
   if (!user || !(await verifyPassword(input.currentPassword, user.passwordHash))) {
     throw new AuthError("INVALID_CREDENTIALS", "当前密码不正确。");
   }
-  await updatePasswordRecord(input.userId, await hashPassword(password), true);
-  await revokeAllSessions(input.userId);
+  const mustRotateSession = user.passwordResetRequired;
+  const displayName = mustRotateSession && !user.displayName ? validateDisplayName(input.displayName ?? "") : undefined;
+  await updatePasswordRecord(input.userId, await hashPassword(password), mustRotateSession, mustRotateSession ? undefined : input.sessionId, displayName);
+  if (mustRotateSession) {
+    return { rotatedSession: await createSessionForUser({ ...user, passwordResetRequired: false }) };
+  }
+  return {};
+}
+
+export async function getOwnProfile(userId: string) {
+  const profile = await getOwnProfileRecord(userId);
+  if (!profile) throw new AuthError("NOT_FOUND", "账号资料不存在。");
+  return profile;
+}
+
+export async function updateOwnProfile(input: {
+  userId: string;
+  displayName: string;
+  phone: string;
+  gender: string;
+  introduction: string;
+}) {
+  const displayName = validateDisplayName(input.displayName);
+  const phone = input.phone.trim();
+  if (phone && !(/^[1][3-9]\d{9}$/.test(phone) || /^\+[1-9]\d{6,14}$/.test(phone))) {
+    throw new AuthError("INVALID_INPUT", "请输入有效的手机号。");
+  }
+  const gender = input.gender.trim();
+  if (gender && !["male", "female", "other", "undisclosed"].includes(gender)) {
+    throw new AuthError("INVALID_INPUT", "请选择有效的性别选项。");
+  }
+  const introduction = input.introduction.trim();
+  if (Array.from(introduction).length > 500) {
+    throw new AuthError("INVALID_INPUT", "个人介绍不能超过 500 个字符。");
+  }
+  const profile = await updateOwnProfileRecord({
+    userId: input.userId,
+    displayName,
+    phone: phone || null,
+    gender: gender ? gender as "male" | "female" | "other" | "undisclosed" : null,
+    introduction: introduction || null,
+  });
+  if (!profile) throw new AuthError("NOT_FOUND", "账号资料不存在。");
+  return profile;
+}
+
+export async function getOwnAvatarKey(userId: string): Promise<string> {
+  const key = await getOwnAvatarKeyRecord(userId);
+  if (!key) throw new AuthError("NOT_FOUND", "头像不存在。");
+  return key;
+}
+
+export async function updateOwnAvatar(userId: string, avatarKey: string): Promise<string> {
+  const key = await updateOwnAvatarRecord(userId, avatarKey);
+  if (!key) throw new AuthError("NOT_FOUND", "账号资料不存在。");
+  return key;
 }
 
 export async function deleteAccount(input: {
@@ -206,25 +257,29 @@ export async function deleteAccount(input: {
 
 export async function adminCreateReader(input: {
   operator: Session;
-  displayName: string;
   email: string;
-  password: string;
+  meta?: RequestMeta;
 }): Promise<AuthUser> {
-  if (input.operator.role !== "admin") throw new AuthError("FORBIDDEN", "没有访问权限。");
+  if (input.operator.role !== "admin" || input.operator.status !== "active") throw new AuthError("FORBIDDEN", "没有访问权限。");
   const email = validateEmail(input.email);
-  const displayName = validateDisplayName(input.displayName);
-  const password = validatePassword(input.password);
+  await enforceAdminManageRateLimits(email, input.meta?.ip ?? "unknown");
   try {
-    return await createReaderByAdmin({ email, displayName, passwordHash: await hashPassword(password), forcePasswordChange: true });
+    return await createReaderByAdmin({
+      email,
+      displayName: "",
+      passwordHash: await hashPassword("123456"),
+      forcePasswordChange: true,
+      operatorUserId: input.operator.id,
+    });
   } catch (error) {
     if (isUniqueViolation(error)) throw new AuthError("CONFLICT", "该邮箱已被使用。");
     throw error;
   }
 }
 
-export async function adminListReaders(operator: Session): Promise<ReaderAccountSummary[]> {
-  if (operator.role !== "admin") throw new AuthError("FORBIDDEN", "没有访问权限。");
-  return listReaderAccounts();
+export async function adminListReaders(operator: Session, input: { includeDeleted?: boolean; search?: string } = {}): Promise<ReaderAccountSummary[]> {
+  if (operator.role !== "admin" || operator.status !== "active") throw new AuthError("FORBIDDEN", "没有访问权限。");
+  return listReaderAccounts(input);
 }
 
 export async function adminDisableReader(input: { operator: Session; targetUserId: string; meta?: RequestMeta }): Promise<void> {
@@ -253,7 +308,9 @@ export async function adminEditReader(input: {
   targetUserId: string;
   email: string;
   displayName: string;
-  reason: string;
+  phone?: string;
+  gender?: string;
+  reason?: string;
   meta?: RequestMeta;
 }): Promise<ReaderAccountSummary> {
   if (input.operator.role !== "admin" || input.operator.status !== "active") {
@@ -261,7 +318,14 @@ export async function adminEditReader(input: {
   }
   const email = validateEmail(input.email);
   const displayName = validateDisplayName(input.displayName);
-  const reason = requireNonBlank(input.reason, "操作原因");
+  const phone = input.phone?.trim() ?? "";
+  if (phone && !(/^[1][3-9]\d{9}$/.test(phone) || /^\+[1-9]\d{6,14}$/.test(phone))) {
+    throw new AuthError("INVALID_INPUT", "请输入有效的手机号。");
+  }
+  const gender = input.gender?.trim() ?? "";
+  if (gender && !["male", "female", "other", "undisclosed"].includes(gender)) {
+    throw new AuthError("INVALID_INPUT", "请选择有效的性别选项。");
+  }
   await enforceAdminManageRateLimits(input.targetUserId, input.meta?.ip ?? "unknown");
   try {
     const reader = await updateReaderProfile({
@@ -269,7 +333,8 @@ export async function adminEditReader(input: {
       operatorUserId: input.operator.id,
       email,
       displayName,
-      reason,
+      phone: phone || null,
+      gender: gender ? gender as "male" | "female" | "other" | "undisclosed" : null,
     });
     if (!reader) throw new AuthError("NOT_FOUND", "读者账号不存在。");
     return reader;
@@ -282,35 +347,47 @@ export async function adminEditReader(input: {
 export async function adminResetReader(input: {
   operator: Session;
   targetUserId: string;
-  reason: string;
-  identityConfirmed: boolean;
   meta?: RequestMeta;
-}): Promise<{ temporaryPassword: string }> {
-  if (input.operator.role !== "admin") throw new AuthError("FORBIDDEN", "没有访问权限。");
-  if (!input.identityConfirmed) throw new AuthError("CONFIRMATION_REQUIRED", "管理员必须先完成线下身份确认。");
-  const reason = requireNonBlank(input.reason, "重置原因");
-  const target = await findUserById(input.targetUserId);
-  const emailForLimit = target?.email ?? input.targetUserId;
-  await enforceRateLimits("adminReset", emailForLimit, input.meta?.ip ?? "unknown");
-  const temporaryPassword = generateTemporaryPassword();
+}): Promise<void> {
+  if (input.operator.role !== "admin" || input.operator.status !== "active") throw new AuthError("FORBIDDEN", "没有访问权限。");
+  await enforceAdminManageRateLimits(input.targetUserId, input.meta?.ip ?? "unknown");
   try {
     await resetReaderPassword({
       operatorUserId: input.operator.id,
       targetUserId: input.targetUserId,
-      passwordHash: await hashPassword(temporaryPassword),
-      reason,
+      passwordHash: await hashPassword("123456"),
     });
   } catch {
-    try {
-      await import("./repository").then(({ recordFailedAdminReset }) => recordFailedAdminReset({
-        operatorUserId: input.operator.id,
-        targetUserId: input.targetUserId,
-        reason,
-      }));
-    } catch {
-      // Preserve the original failure; never expose or persist the temporary password.
-    }
     throw new AuthError("NOT_FOUND", "无法完成密码重置。");
   }
-  return { temporaryPassword };
+}
+
+export async function adminSoftDeleteReader(input: {
+  operator: Session;
+  targetUserId: string;
+  reason: string;
+  meta?: RequestMeta;
+}): Promise<void> {
+  if (input.operator.role !== "admin" || input.operator.status !== "active") throw new AuthError("FORBIDDEN", "没有访问权限。");
+  const reason = input.reason.trim();
+  if (reason.length > 500) throw new AuthError("INVALID_INPUT", "删除原因不能超过 500 个字符。");
+  await enforceAdminManageRateLimits(input.targetUserId, input.meta?.ip ?? "unknown");
+  const deleted = await softDeleteReaderAccount(input.targetUserId, input.operator.id, reason || null);
+  if (!deleted) throw new AuthError("NOT_FOUND", "读者账号不存在或已删除。");
+}
+
+export async function adminRestoreReader(input: {
+  operator: Session;
+  targetUserId: string;
+  meta?: RequestMeta;
+}): Promise<void> {
+  if (input.operator.role !== "admin" || input.operator.status !== "active") throw new AuthError("FORBIDDEN", "没有访问权限。");
+  await enforceAdminManageRateLimits(input.targetUserId, input.meta?.ip ?? "unknown");
+  try {
+    const restored = await restoreReaderAccount(input.targetUserId, input.operator.id);
+    if (!restored) throw new AuthError("NOT_FOUND", "已删除读者账号不存在。");
+  } catch (error) {
+    if (isUniqueViolation(error)) throw new AuthError("CONFLICT", "该邮箱已被其他有效账号使用，无法恢复。");
+    throw error;
+  }
 }

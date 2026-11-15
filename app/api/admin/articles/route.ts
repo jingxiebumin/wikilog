@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/service";
 import { AuthError } from "@/lib/auth/errors";
 import { adminArticleList, adminUploadArticle } from "@/lib/articles/service";
-import { authErrorResponse } from "@/lib/auth/route-utils";
+import { adminErrorResponse } from "@/lib/auth/route-utils";
 
 export async function GET() {
   try {
     const actor = await requireSession({ admin: true });
     return NextResponse.json({ articles: await adminArticleList(actor) });
   } catch (error) {
-    return authErrorResponse(error);
+    return adminErrorResponse(error);
   }
 }
 
@@ -29,6 +29,6 @@ export async function POST(request: Request) {
     await adminUploadArticle(actor, await file.text());
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (error) {
-    return authErrorResponse(error);
+    return adminErrorResponse(error);
   }
 }

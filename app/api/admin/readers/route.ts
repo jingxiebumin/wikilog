@@ -1,6 +1,21 @@
 import { NextResponse } from "next/server";
-import { adminCreateReader, requireSession } from "@/lib/auth/service";
-import { authErrorResponse, readBody } from "@/lib/auth/route-utils";
+import { adminCreateReader, adminListReaders, requireSession } from "@/lib/auth/service";
+import { adminErrorResponse, readBody } from "@/lib/auth/route-utils";
+import { requestMeta } from "@/lib/auth/http";
+
+export async function GET(request: Request) {
+  try {
+    const operator = await requireSession({ admin: true });
+    const params = new URL(request.url).searchParams;
+    const readers = await adminListReaders(operator, {
+      includeDeleted: params.get("status") === "deleted",
+      search: params.get("search") ?? "",
+    });
+    return NextResponse.json({ readers });
+  } catch (error) {
+    return adminErrorResponse(error);
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -8,12 +23,11 @@ export async function POST(request: Request) {
     const operator = await requireSession({ admin: true });
     const user = await adminCreateReader({
       operator,
-      displayName: body.displayName ?? "",
       email: body.email ?? "",
-      password: body.password ?? "",
+      meta: requestMeta(request),
     });
     return NextResponse.json({ user }, { status: 201 });
   } catch (error) {
-    return authErrorResponse(error);
+    return adminErrorResponse(error);
   }
 }

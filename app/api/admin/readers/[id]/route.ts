@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { adminEditReader, requireSession } from "@/lib/auth/service";
+import { adminEditReader, adminSoftDeleteReader, requireSession } from "@/lib/auth/service";
 import { requestMeta } from "@/lib/auth/http";
-import { authErrorResponse, readBody } from "@/lib/auth/route-utils";
+import { adminErrorResponse, readBody } from "@/lib/auth/route-utils";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -13,11 +13,24 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       targetUserId: id,
       displayName: body.displayName ?? "",
       email: body.email ?? "",
-      reason: body.reason ?? "",
+      phone: body.phone ?? "",
+      gender: body.gender ?? "",
       meta: requestMeta(request),
     });
     return NextResponse.json({ user });
   } catch (error) {
-    return authErrorResponse(error);
+    return adminErrorResponse(error);
+  }
+}
+
+export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
+  try {
+    const body = await readBody(request);
+    const { id } = await context.params;
+    const operator = await requireSession({ admin: true });
+    await adminSoftDeleteReader({ operator, targetUserId: id, reason: body.reason ?? "", meta: requestMeta(request) });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return adminErrorResponse(error);
   }
 }

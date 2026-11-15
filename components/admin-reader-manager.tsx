@@ -1,8 +1,7 @@
 "use client";
 
-import type { FormEvent } from "react";
-import { useState } from "react";
-import { PasswordInput } from "@/components/password-input";
+import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 
 type Reader = {
   id: string;
@@ -10,188 +9,206 @@ type Reader = {
   displayName: string;
   status: "active" | "disabled";
   passwordResetRequired: boolean;
+  createdAt: string | Date;
+  phone: string | null;
+  gender: "male" | "female" | "other" | "undisclosed" | null;
+  delFlag: boolean;
 };
 
-async function postJson(url: string, body: Record<string, string>) {
+type ReaderFilter = "active" | "deleted";
+
+async function requestJson(url: string, method: string, body?: Record<string, string>) {
   const response = await fetch(url, {
-    method: "POST",
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    method,
+    headers: { Accept: "application/json", ...(body ? { "Content-Type": "application/json" } : {}) },
+    ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  const payload = await response.json().catch(() => ({})) as { error?: string; temporaryPassword?: string; user?: Reader };
+  const payload = await response.json().catch(() => ({})) as { error?: string; message?: string; user?: Reader };
   if (!response.ok) throw new Error(payload.error ?? "请求无法完成，请稍后重试。");
   return payload;
 }
 
-const passwordError = (value: string) => value.length < 9 ? "密码至少需要 9 位。" : "";
-
-function CreateReaderForm({ onCreated }: { onCreated: (reader: Reader) => void }) {
-  const [displayName, setDisplayName] = useState("");
+function CreateReader({ onCreated }: { onCreated: () => void }) {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [passwordFieldError, setPasswordFieldError] = useState("");
   const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [busy, setBusy] = useState(false);
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const nextPasswordError = passwordError(password);
-    setPasswordFieldError(nextPasswordError);
-    if (nextPasswordError) return;
-    setSubmitting(true);
+    setBusy(true);
     setError("");
     try {
-      const result = await postJson("/api/admin/readers", { displayName, email, password });
-      if (result.user) onCreated(result.user);
-      setDisplayName("");
+      await requestJson("/api/admin/readers", "POST", { email });
       setEmail("");
-      setPassword("");
+      onCreated();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "创建读者失败。");
     } finally {
-      setSubmitting(false);
+      setBusy(false);
     }
   }
   return (
-    <form className="account-form" onSubmit={submit}>
+    <form className="admin-reader-create" onSubmit={submit}>
+      <h2>创建读者</h2>
+      <label className="form-field"><span>登录邮箱</span><input autoComplete="email" onChange={(event) => setEmail(event.target.value)} placeholder="reader@example.com" required type="email" value={email} /></label>
       {error ? <p className="form-error" role="alert">{error}</p> : null}
-      <h2>人工创建读者</h2>
-      <label className="form-field" htmlFor="admin-reader-name"><span>昵称</span><input id="admin-reader-name" maxLength={80} onChange={(event) => setDisplayName(event.target.value)} placeholder="读者昵称" required value={displayName} /></label>
-      <label className="form-field" htmlFor="admin-reader-email"><span>邮箱</span><input id="admin-reader-email" onChange={(event) => setEmail(event.target.value)} placeholder="reader@example.com" required type="email" value={email} /></label>
-      <PasswordInput error={passwordFieldError} label="初始密码" name="admin-reader-password" onBlur={() => setPasswordFieldError(passwordError(password))} onChange={(event) => setPassword(event.target.value)} placeholder="至少 9 位密码" required value={password} />
-      <button disabled={submitting} type="submit">{submitting ? "创建中…" : "创建读者"}</button>
+      <button disabled={busy} type="submit">{busy ? "创建中…" : "创建账号"}</button>
+      <p className="form-help">初始密码为 123456，首次登录时必须修改。</p>
     </form>
   );
 }
 
-function ResetReaderForm({ reader }: { reader: Reader }) {
-  const [reason, setReason] = useState("");
-  const [confirmed, setConfirmed] = useState(false);
-  const [error, setError] = useState("");
-  const [temporaryPassword, setTemporaryPassword] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!confirmed) { setError("请确认已在线下完成读者身份确认。"); return; }
-    setSubmitting(true);
-    setError("");
-    setTemporaryPassword("");
-    try {
-      const result = await postJson(`/api/admin/readers/${reader.id}/reset-password`, {
-        reason,
-        identityConfirmed: "true",
-      });
-      setTemporaryPassword(result.temporaryPassword ?? "");
-      setReason("");
-      setConfirmed(false);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "密码重置失败。");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-  return (
-    <form className="admin-reader-reset" onSubmit={submit}>
-      <div><strong>{reader.displayName}</strong><span>{reader.email}</span></div>
-      <label className="form-field" htmlFor={`reset-reason-${reader.id}`}><span>重置原因</span><input id={`reset-reason-${reader.id}`} onChange={(event) => setReason(event.target.value)} placeholder="例如：线下确认身份后协助找回" required value={reason} /></label>
-      <label className="admin-confirm"><input checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} type="checkbox" />我已在线下确认该读者身份</label>
-      {error ? <p className="form-error" role="alert">{error}</p> : null}
-      <button disabled={submitting || reader.status !== "active"} type="submit">{submitting ? "生成中…" : "生成一次性临时密码"}</button>
-      {temporaryPassword ? <p className="temporary-password" role="status"><span>临时密码（只显示这一次）</span><code>{temporaryPassword}</code></p> : null}
-    </form>
-  );
-}
-
-function EditReaderForm({ reader, onSaved }: { reader: Reader; onSaved: (reader: Reader) => void }) {
+function EditReaderDialog({ reader, onClose, onSaved }: { reader: Reader; onClose: () => void; onSaved: (reader: Reader) => void }) {
   const [displayName, setDisplayName] = useState(reader.displayName);
   const [email, setEmail] = useState(reader.email);
-  const [reason, setReason] = useState("");
+  const [phone, setPhone] = useState(reader.phone ?? "");
+  const [gender, setGender] = useState(reader.gender ?? "");
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
+  const [busy, setBusy] = useState(false);
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setSubmitting(true);
+    setBusy(true);
     setError("");
-    setNotice("");
     try {
-      const result = await postJson(`/api/admin/readers/${reader.id}`, { displayName, email, reason });
+      const result = await requestJson(`/api/admin/readers/${reader.id}`, "PATCH", { displayName, email, phone, gender });
       if (result.user) onSaved(result.user);
-      setReason("");
-      setNotice("资料已保存。邮箱变更后，该读者需要重新登录。");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "资料更新失败。");
     } finally {
-      setSubmitting(false);
+      setBusy(false);
     }
   }
-
   return (
-    <form className="admin-reader-edit" onSubmit={submit}>
-      <h3>编辑读者资料</h3>
-      <label className="form-field" htmlFor={`reader-name-${reader.id}`}><span>昵称</span><input id={`reader-name-${reader.id}`} maxLength={80} onChange={(event) => setDisplayName(event.target.value)} required value={displayName} /></label>
-      <label className="form-field" htmlFor={`reader-email-${reader.id}`}><span>登录邮箱</span><input id={`reader-email-${reader.id}`} onChange={(event) => setEmail(event.target.value)} required type="email" value={email} /></label>
-      <label className="form-field" htmlFor={`reader-edit-reason-${reader.id}`}><span>修改原因</span><input id={`reader-edit-reason-${reader.id}`} maxLength={300} onChange={(event) => setReason(event.target.value)} required value={reason} /></label>
-      {error ? <p className="form-error" role="alert">{error}</p> : null}
-      {notice ? <p className="account-notice" role="status">{notice}</p> : null}
-      <button disabled={submitting} type="submit">{submitting ? "保存中…" : "保存资料"}</button>
-    </form>
+    <dialog aria-labelledby="reader-edit-title" className="admin-reader-dialog" open>
+      <form className="account-form" onSubmit={submit}>
+        <h2 id="reader-edit-title">编辑读者资料</h2>
+        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        <label className="form-field"><span>昵称</span><input maxLength={80} onChange={(event) => setDisplayName(event.target.value)} required value={displayName} /></label>
+        <label className="form-field"><span>登录邮箱</span><input onChange={(event) => setEmail(event.target.value)} required type="email" value={email} /></label>
+        <label className="form-field"><span>手机号</span><input onChange={(event) => setPhone(event.target.value)} value={phone} /></label>
+        <label className="form-field"><span>性别</span><select onChange={(event) => setGender(event.target.value)} value={gender}><option value="">未填写</option><option value="male">男</option><option value="female">女</option><option value="other">其他</option><option value="undisclosed">不愿透露</option></select></label>
+        <div className="profile-form-actions"><button disabled={busy} type="submit">{busy ? "保存中…" : "保存"}</button><button className="button-secondary" disabled={busy} onClick={onClose} type="button">取消</button></div>
+      </form>
+    </dialog>
   );
 }
 
-function ReaderStatusControl({ reader, onChanged }: { reader: Reader; onChanged: (status: Reader["status"]) => void }) {
-  const [reason, setReason] = useState("");
+export function AdminReaderManager({ initialReaders, initialSearch, includeDeleted }: { initialReaders: Reader[]; initialSearch: string; includeDeleted: boolean }) {
+  const router = useRouter();
+  const [readers, setReaders] = useState(initialReaders);
+  const [search, setSearch] = useState(initialSearch);
+  const [filter, setFilter] = useState<ReaderFilter>(includeDeleted ? "deleted" : "active");
+  const [editing, setEditing] = useState<Reader>();
+  const [deleting, setDeleting] = useState<Reader>();
+  const [deleteReason, setDeleteReason] = useState("");
   const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const nextStatus = reader.status === "active" ? "disabled" : "active";
+  const [notice, setNotice] = useState("");
+  const [busyId, setBusyId] = useState("");
 
-  async function submit(event: FormEvent) {
+  async function reloadReaders() {
+    const params = new URLSearchParams({ search, status: filter });
+    const response = await fetch(`/api/admin/readers?${params.toString()}`, { headers: { Accept: "application/json" } });
+    const payload = await response.json().catch(() => ({})) as { readers?: Reader[]; error?: string };
+    if (response.ok) setReaders(payload.readers ?? []);
+    else setError(payload.error ?? "无法读取账号列表。");
+  }
+
+  async function searchReaders(event: FormEvent) {
     event.preventDefault();
-    setSubmitting(true);
+    const params = new URLSearchParams({ search, status: filter });
+    router.replace(`/admin/readers?${params.toString()}`);
+    const response = await fetch(`/api/admin/readers?${params.toString()}`, { headers: { Accept: "application/json" } });
+    const payload = await response.json().catch(() => ({})) as { readers?: Reader[]; error?: string };
+    if (!response.ok) { setError(payload.error ?? "无法读取账号列表。"); return; }
+    setError("");
+    setReaders(payload.readers ?? []);
+  }
+
+  async function resetPassword(reader: Reader) {
+    if (!window.confirm(`确定将 ${reader.email} 的密码重置为 123456 吗？该读者下次登录时必须修改密码。`)) return;
+    setBusyId(reader.id);
     setError("");
     try {
-      await postJson(`/api/admin/readers/${reader.id}/status`, { status: nextStatus, reason });
-      onChanged(nextStatus);
-      setReason("");
+      const result = await requestJson(`/api/admin/readers/${reader.id}/reset-password`, "POST");
+      setNotice(result.message ?? "密码已重置。");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "账号状态更新失败。");
+      setError(caught instanceof Error ? caught.message : "密码重置失败。");
     } finally {
-      setSubmitting(false);
+      setBusyId("");
+    }
+  }
+
+  async function confirmDelete(event: FormEvent) {
+    event.preventDefault();
+    if (!deleting) return;
+    setBusyId(deleting.id);
+    setError("");
+    try {
+      await requestJson(`/api/admin/readers/${deleting.id}`, "DELETE", { reason: deleteReason });
+      setReaders((current) => current.filter((reader) => reader.id !== deleting.id));
+      setDeleting(undefined);
+      setDeleteReason("");
+      setNotice("读者账号已删除。");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "删除失败。");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function restore(reader: Reader) {
+    if (!window.confirm(`确定恢复 ${reader.email} 吗？`)) return;
+    setBusyId(reader.id);
+    setError("");
+    try {
+      await requestJson(`/api/admin/readers/${reader.id}/restore`, "POST");
+      setReaders((current) => current.filter((item) => item.id !== reader.id));
+      setNotice("读者账号已恢复。");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "恢复失败。");
+    } finally {
+      setBusyId("");
     }
   }
 
   return (
-    <form className="admin-reader-status" onSubmit={submit}>
-      <label className="form-field" htmlFor={`status-reason-${reader.id}`}>
-        <span>{nextStatus === "active" ? "重新启用原因" : "停用原因"}</span>
-        <input id={`status-reason-${reader.id}`} maxLength={300} onChange={(event) => setReason(event.target.value)} required value={reason} />
-      </label>
-      {error ? <p className="form-error" role="alert">{error}</p> : null}
-      <button className="button-link" disabled={submitting} type="submit">
-        {submitting ? "处理中…" : nextStatus === "active" ? "重新启用" : "停用账号"}
-      </button>
-    </form>
-  );
-}
-
-export function AdminReaderManager({ initialReaders }: { initialReaders: Reader[] }) {
-  const [readers, setReaders] = useState(initialReaders);
-  const [filter, setFilter] = useState("");
-  const visibleReaders = readers.filter((reader) => `${reader.displayName} ${reader.email} ${reader.status}`.toLocaleLowerCase().includes(filter.trim().toLocaleLowerCase()));
-  return (
     <div className="admin-sections">
-      <CreateReaderForm onCreated={(reader) => setReaders((current) => [reader, ...current])} />
-      <section className="admin-reader-list">
-        <div className="admin-reader-list-heading"><h2>读者账号</h2><label className="form-field"><span>搜索昵称、邮箱或状态</span><input onChange={(event) => setFilter(event.target.value)} type="search" value={filter} /></label></div>
-        {visibleReaders.length === 0 ? <p className="form-help">{readers.length === 0 ? "暂无读者账号。" : "没有匹配的账号。"}</p> : visibleReaders.map((reader) => (
-          <div className="admin-reader-entry" key={reader.id}>
-            <div><strong>{reader.displayName} · {reader.status === "active" ? "已启用" : "已停用"}</strong><span>{reader.email}</span></div>
-            <EditReaderForm reader={reader} onSaved={(updated) => setReaders((current) => current.map((item) => item.id === reader.id ? updated : item))} />
-            <ReaderStatusControl reader={reader} onChanged={(status) => setReaders((current) => current.map((item) => item.id === reader.id ? { ...item, status } : item))} />
-            <ResetReaderForm reader={reader} />
-          </div>
-        ))}
+      {!includeDeleted ? <CreateReader onCreated={() => { setNotice("读者账号已创建。"); void reloadReaders(); }} /> : null}
+      <section aria-label="读者账号列表" className="admin-reader-list">
+        <form className="admin-reader-list-heading" onSubmit={searchReaders}>
+          <h2>读者账号</h2>
+          <label className="form-field"><span>邮箱或昵称</span><input onChange={(event) => setSearch(event.target.value)} type="search" value={search} /></label>
+          <label className="form-field"><span>账号范围</span><select onChange={(event) => setFilter(event.target.value as ReaderFilter)} value={filter}><option value="active">正常账号</option><option value="deleted">已删除账号</option></select></label>
+          <button type="submit">查询</button>
+        </form>
+        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        {notice ? <p className="account-notice" role="status">{notice}</p> : null}
+        {readers.length === 0 ? <p className="form-help">暂无匹配的读者账号。</p> : (
+          <div className="admin-reader-table-wrap"><table className="admin-reader-table">
+            <thead><tr><th>昵称</th><th>登录邮箱</th><th>账号状态</th><th>创建日期</th><th>操作</th></tr></thead>
+            <tbody>{readers.map((reader) => <tr key={reader.id}>
+              <td>{reader.displayName || "未设置"}</td><td>{reader.email}</td>
+              <td>{reader.delFlag ? "已删除" : reader.status === "active" ? "正常" : "停用"}</td>
+              <td>{new Date(reader.createdAt).toLocaleDateString("zh-CN")}</td>
+              <td className="admin-reader-actions">
+                {reader.delFlag ? <button disabled={busyId === reader.id} onClick={() => void restore(reader)} type="button">恢复</button> : <>
+                  <button onClick={() => setEditing(reader)} type="button">编辑</button>
+                  <button disabled={busyId === reader.id} onClick={() => void resetPassword(reader)} type="button">重置密码</button>
+                  <button className="danger-action" onClick={() => { setDeleteReason(""); setDeleting(reader); }} type="button">删除</button>
+                </>}
+              </td>
+            </tr>)}</tbody>
+          </table></div>
+        )}
       </section>
+      {editing ? <EditReaderDialog onClose={() => setEditing(undefined)} onSaved={(updated) => { setReaders((current) => current.map((reader) => reader.id === updated.id ? updated : reader)); setEditing(undefined); setNotice("读者资料已保存。"); }} reader={editing} /> : null}
+      {deleting ? <dialog aria-labelledby="reader-delete-title" className="admin-reader-dialog" open>
+        <form className="account-form" onSubmit={confirmDelete}>
+          <h2 id="reader-delete-title">删除读者账号</h2><p>账号将被软删除，关联数据保留，会话立即失效。</p>
+          {error ? <p className="form-error" role="alert">{error}</p> : null}
+          <label className="form-field"><span>删除原因（选填）</span><textarea maxLength={500} onChange={(event) => setDeleteReason(event.target.value)} rows={3} value={deleteReason} /></label>
+          <div className="profile-form-actions"><button className="danger-action" disabled={busyId === deleting.id} type="submit">{busyId === deleting.id ? "处理中…" : "确认删除"}</button><button className="button-secondary" onClick={() => setDeleting(undefined)} type="button">取消</button></div>
+        </form>
+      </dialog> : null}
     </div>
   );
 }
