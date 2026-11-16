@@ -12,6 +12,7 @@ vi.mock("@/lib/db", () => ({
 
 import {
   findPublishedArticleFromDatabase,
+  findPublishedArticleVersionFromDatabase,
   listPublishedArticlesFromDatabase,
   listTagArticlesFromDatabase,
   searchPublishedArticlesFromDatabase,
@@ -120,6 +121,25 @@ describe("PostgreSQL public content repository", () => {
     await expect(findPublishedArticleFromDatabase("draft")).resolves.toBeUndefined();
     await expect(findPublishedArticleFromDatabase("archived")).resolves.toBeUndefined();
     await expect(findPublishedArticleFromDatabase("deleted")).resolves.toBeUndefined();
+  });
+
+  it("serves a cited archived version only while its article remains publicly visible", async () => {
+    const previous = await createArticle({ slug: "version-citation", title: "回答时的版本", contentText: "原文证据" });
+    const current = await database.query<{ id: string }>(`
+      INSERT INTO article_versions (article_id, version_number, status, title, summary, content_text, content, published_at)
+      VALUES ($1, 2, 'published', '当前版本', '当前摘要', '更新后的正文', '[{"type":"paragraph","text":"更新后的正文"}]'::jsonb, '2026-10-02')
+      RETURNING id
+    `, [previous.articleId]);
+    await database.query("UPDATE article_versions SET status = 'archived' WHERE id = $1", [previous.versionId]);
+    await database.query("UPDATE articles SET current_published_version_id = $1 WHERE id = $2", [current.rows[0].id, previous.articleId]);
+
+    await expect(findPublishedArticleVersionFromDatabase("version-citation", previous.versionId)).resolves.toMatchObject({
+      title: "回答时的版本",
+      body: [{ type: "paragraph", text: "原文证据" }],
+    });
+
+    const hidden = await createArticle({ slug: "hidden-citation", title: "已下架", contentText: "隐藏正文", archived: true });
+    await expect(findPublishedArticleVersionFromDatabase("hidden-citation", hidden.versionId)).resolves.toBeUndefined();
   });
 
   it("keeps search title priority, case-insensitive matching, and nearby body snippets", async () => {

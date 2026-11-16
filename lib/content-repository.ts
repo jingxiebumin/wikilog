@@ -17,7 +17,7 @@ type ArticleRow = QueryResultRow & {
   content: Article["body"];
 };
 
-const publishedArticleSelect = `
+const articleSelect = (versionJoin: string, versionFilter: string) => `
   SELECT
     a.slug,
     v.title,
@@ -32,19 +32,23 @@ const publishedArticleSelect = `
     v.content
   FROM articles a
   JOIN article_versions v
-    ON v.id = a.current_published_version_id
-    AND v.article_id = a.id
+    ON ${versionJoin}
     AND v.del_flag = false
   JOIN categories c ON c.id = a.category_id AND c.del_flag = false
   LEFT JOIN article_version_tags avt
     ON avt.article_version_id = v.id
     AND avt.del_flag = false
   LEFT JOIN tags t ON t.id = avt.tag_id AND t.del_flag = false
-  WHERE v.status = 'published'
+  WHERE ${versionFilter}
     AND a.del_flag = false
     AND a.archived_at IS NULL
     AND a.deleted_at IS NULL
 `;
+
+const publishedArticleSelect = articleSelect(
+  "v.id = a.current_published_version_id AND v.article_id = a.id",
+  "v.status = 'published'",
+);
 
 const groupByArticle = `
   GROUP BY a.id, v.id, c.id
@@ -136,6 +140,15 @@ export async function findPublishedArticleFromDatabase(slug: string): Promise<Ar
     [slug],
   );
   return result.rows[0] ? mapArticle(result.rows[0]) : undefined;
+}
+
+export async function findPublishedArticleVersionFromDatabase(slug: string, versionId: string): Promise<Article | undefined> {
+  const result = await getPool().query<ArticleRow>(
+    articleSelect("v.article_id = a.id", "v.id = $2 AND v.status IN ('published', 'archived')")
+      + " AND a.slug = $1\n" + groupByArticle,
+    [slug, versionId],
+  );
+  return result.rows[0] ? { ...mapArticle(result.rows[0]), status: "published" } : undefined;
 }
 
 export async function listCategoryArticlesFromDatabase(categorySlug: string): Promise<Article[]> {

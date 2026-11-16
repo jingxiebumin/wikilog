@@ -14,6 +14,7 @@ import { hasDatabase } from "@/lib/db";
 import {
   findCategoryFromDatabase,
   findPublishedArticleFromDatabase,
+  findPublishedArticleVersionFromDatabase,
   findTagFromDatabase,
   listCategoriesFromDatabase,
   listCategoryArticlesFromDatabase,
@@ -48,6 +49,10 @@ export async function listPublishedArticles() {
 
 export async function getPublishedArticle(slug: string) {
   return hasDatabase ? findPublishedArticleFromDatabase(slug) : findPublishedArticle(slug);
+}
+
+export async function getPublishedArticleVersion(slug: string, versionId: string) {
+  return hasDatabase ? findPublishedArticleVersionFromDatabase(slug, versionId) : undefined;
 }
 
 export async function listArticlesForCategory(slug: string) {

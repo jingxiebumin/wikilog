@@ -20,6 +20,7 @@ export function authErrorResponse(error: unknown): NextResponse {
         : authError?.code === "CONFLICT" ? 409
           : authError?.code === "DATABASE_UNAVAILABLE" ? 503
             : authError?.code === "STORAGE_UNAVAILABLE" ? 503
+              : authError?.code === "MODEL_UNAVAILABLE" ? 503
             : authError?.code === "NOT_FOUND" ? 404 : 400;
   const response = NextResponse.json({ error: publicAuthMessage(error) }, { status });
   if (authError?.retryAfterSeconds) response.headers.set("Retry-After", String(authError.retryAfterSeconds));

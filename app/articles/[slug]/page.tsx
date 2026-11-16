@@ -7,10 +7,11 @@ import { ArticleBody } from "@/components/article-body";
 import { ArticleCard } from "@/components/article-card";
 import { FavoriteButton } from "@/components/favorite-button";
 import { getCurrentSession } from "@/lib/auth/service";
+import { getAdminQaSettings } from "@/lib/qa";
 import { readerHasFavorite } from "@/lib/favorites/service";
-import { getCategoryBySlug, getPublishedArticle, listPublishedArticles } from "@/lib/public-content";
+import { getCategoryBySlug, getPublishedArticle, getPublishedArticleVersion, listPublishedArticles } from "@/lib/public-content";
 
-type ArticlePageProps = { params: Promise<{ slug: string }> };
+type ArticlePageProps = { params: Promise<{ slug: string }>; searchParams: Promise<{ version?: string }> };
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: ArticlePageProps): Promise<Metadata> {
@@ -19,9 +20,11 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
   return article ? { title: article.title, description: article.summary } : { title: "文章未找到" };
 }
 
-export default async function ArticlePage({ params }: ArticlePageProps) {
-  const { slug } = await params;
-  const article = await getPublishedArticle(slug);
+export default async function ArticlePage({ params, searchParams }: ArticlePageProps) {
+  const [{ slug }, query] = await Promise.all([params, searchParams]);
+  const article = query.version
+    ? await getPublishedArticleVersion(slug, query.version)
+    : await getPublishedArticle(slug);
   if (!article) notFound();
 
   const [category, allArticles] = await Promise.all([
@@ -32,6 +35,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     .filter((item) => item.slug !== article.slug && item.category === article.category)
     .slice(0, 2);
   const session = await getCurrentSession();
+  const qaSettings = session?.role === "admin" ? getAdminQaSettings() : { enabled: false };
   const favorite = session && !session.passwordResetRequired
     ? await readerHasFavorite(session, article.slug)
     : false;
@@ -53,6 +57,9 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             {session && !session.passwordResetRequired
               ? <FavoriteButton initialFavorite={favorite} slug={article.slug} />
               : !session ? <Link className="favorite-login-link" href="/login">登录后收藏</Link> : null}
+            {session?.role === "admin" && !session.passwordResetRequired && qaSettings.enabled
+              ? <Link className="article-qa-link" href={`/admin/ai?question=${encodeURIComponent(`请基于《${article.title}》的原文回答：`)}`}>基于本文提问</Link>
+              : null}
           </div>
         </header>
 
