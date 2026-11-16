@@ -45,12 +45,13 @@ export const deepSeekProvider: QaProvider = {
           messages: [
             {
               role: "system",
-              content: "你是文章问答助手。只根据给定文章原文回答，可以简洁转述或归纳，但每项事实都必须得到引用原文支持；证据不足时拒答。输出 JSON 对象：answer 是不超过约 800 个中文字的直接回答；refused 为布尔值；evidence_supported 只有在引用原文确实支持回答中的每项事实时才为 true；citations 为数组，每项包含 sourceId（文章版本 ID）和 quote（逐字摘录且能支持回答的原文片段）。不要输出 URL，不要使用给定原文之外的知识。",
+              content: "你是文章问答助手。Wiki 页面只用于整理主题和定位内容，文章原文才是事实依据。只根据给定文章原文回答，可以简洁转述或归纳，但每项事实都必须得到引用原文支持；证据不足时拒答。输出 JSON 对象：answer 是不超过约 800 个中文字的直接回答；refused 为布尔值；evidence_supported 只有在引用原文确实支持回答中的每项事实时才为 true；citations 为数组，每项包含 sourceId（文章版本 ID）和 quote（逐字摘录且能支持回答的原文片段）。不要输出 URL，不要使用给定原文之外的知识。",
             },
             {
               role: "user",
               content: JSON.stringify({
                 question: input.question,
+                wikiPages: input.wikiPages.map(({ slug, title, body }) => ({ slug, title, body })),
                 sources: input.sources.map(({ articleVersionId, title, contentText }) => ({ id: articleVersionId, title, text: contentText })),
               }),
             },

@@ -160,8 +160,31 @@ describe("Q&A repository", () => {
     `, [reservation.messageId]);
 
     expect(state.rows[0]).toEqual({ status: "processing" });
-    expect(reservation.sources).toEqual([expect.objectContaining({ articleVersionId, contentText: "数据库事务保证状态变更的一致性。" })]);
+    expect(reservation).not.toHaveProperty("sources");
     await qaRepository.settleQuestion({ adminId, messageId: reservation.messageId, status: "failed" });
+  });
+
+  it("returns only matching current article versions with bounded text excerpts", async () => {
+    const category = await database.query<{ id: string }>("SELECT id FROM categories WHERE slug = 'engineering'");
+    const irrelevantArticle = await database.query<{ id: string }>(`
+      INSERT INTO articles (slug, category_id, created_by, updated_by)
+      VALUES ('unrelated', $1, $2, $2) RETURNING id
+    `, [category.rows[0].id, adminId]);
+    const irrelevantVersion = await database.query<{ id: string }>(`
+      INSERT INTO article_versions (article_id, version_number, status, title, summary, content_text, cover, read_minutes, published_at, created_by, updated_by)
+      VALUES ($1, 1, 'published', '索引', '摘要', $2, 'content', 1, CURRENT_DATE, $3, $3) RETURNING id
+    `, [irrelevantArticle.rows[0].id, "索引".repeat(2000), adminId]);
+    await database.query("UPDATE articles SET current_published_version_id = $2 WHERE id = $1", [irrelevantArticle.rows[0].id, irrelevantVersion.rows[0].id]);
+
+    const related = await qaRepository.searchPublishedSources("数据库事务有什么作用？", 5);
+
+    expect(related).toHaveLength(1);
+    expect(related[0]).toMatchObject({ articleVersionId, contentText: "数据库事务保证状态变更的一致性。" });
+    expect(related[0].contentText.length).toBeLessThanOrEqual(1600);
+    await expect(qaRepository.findPublishedSources([irrelevantVersion.rows[0].id], "事务", 5)).resolves.toEqual([]);
+    await expect(qaRepository.findPublishedSources([articleVersionId], "事务", 5)).resolves.toMatchObject([
+      { articleVersionId, contentText: "数据库事务保证状态变更的一致性。" },
+    ]);
   });
 
   it("does not cap submitted calls by the number of in-flight requests", async () => {
@@ -279,6 +302,7 @@ describe("Q&A repository", () => {
     const providerCalls: string[] = [];
     const service = createQaService({
       repository: qaRepository,
+      wikiSearch: async () => [],
       enabled: true,
       modelId: "test-model",
       provider: {
@@ -338,6 +362,7 @@ describe("Q&A repository", () => {
     const providerFinished = new Promise<void>((resolve) => { finishProvider = resolve; });
     const service = createQaService({
       repository: qaRepository,
+      wikiSearch: async () => [],
       enabled: true,
       modelId: "test-model",
       provider: {

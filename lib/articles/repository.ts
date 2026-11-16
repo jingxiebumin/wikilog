@@ -4,6 +4,7 @@ import { pool } from "@/lib/db";
 import type { ArticleBlock } from "@/lib/content";
 import type { ParsedArticle } from "./parser";
 import type { StoredArticleImage } from "./image-storage";
+import { enqueueWikiUpdateJob } from "@/lib/wiki/generation-repository";
 
 type Db = NonNullable<typeof pool>;
 type AdminArticleVersion = ParsedArticle & { id: string; versionNumber: number; current: boolean; status: "draft" | "published" | "archived"; visibility: "visible" | "hidden" | "deleted"; sourceMdx: string };
@@ -180,6 +181,7 @@ export async function publishArticleVersion(versionId: string, actorId: string):
       UPDATE articles SET current_published_version_id = $2, archived_at = NULL, deleted_at = NULL,
         del_flag = false, updated_at = now(), updated_by = $3 WHERE id = $1
     `, [articleId, versionId, actorId]);
+    await enqueueWikiUpdateJob(versionId, actorId, client);
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");

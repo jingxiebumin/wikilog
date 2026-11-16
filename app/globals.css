@@ -209,6 +209,7 @@ input:focus-visible {
 .favorites-empty > a { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-soft); font-size: 11px; white-space: nowrap; }
 .favorites-empty > a:hover { color: var(--coral); }
 
+
 .account-page { max-width: 760px; margin: 0 auto; }
 .admin-section-page { display: grid; max-width: 1180px; grid-template-columns: 180px minmax(0, 1fr); align-items: start; gap: 0 30px; }
 .admin-section-page > .admin-workspace-nav { grid-column: 1; grid-row: 1 / span 2; }

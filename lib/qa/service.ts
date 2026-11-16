@@ -1,6 +1,7 @@
 import "server-only";
 import { AuthError } from "@/lib/auth/errors";
 import type { Session } from "@/lib/auth/types";
+import { searchPublishedWikiPages } from "@/lib/wiki/service";
 
 export type QaCitation = {
   articleVersionId: string;
@@ -11,6 +12,13 @@ export type QaCitation = {
 };
 
 export type QaSource = Omit<QaCitation, "quote"> & { contentText: string };
+
+export type QaWikiPage = {
+  slug: string;
+  title: string;
+  body: string;
+  sources: Array<{ articleVersionId: string }>;
+};
 
 export type QaSession = {
   id: string;
@@ -36,9 +44,10 @@ export type QaRepository = {
   getSession(adminId: string, sessionId: string): Promise<QaSession | undefined>;
   listSessions(adminId: string): Promise<Omit<QaSession, "messages">[]>;
   deleteSession(adminId: string, sessionId: string): Promise<void>;
-  listPublishedSources(): Promise<QaSource[]>;
+  searchPublishedSources(query: string, limit: number): Promise<QaSource[]>;
+  findPublishedSources(articleVersionIds: string[], query: string, limit: number): Promise<QaSource[]>;
   waitForTurn(input: { adminId: string; sessionId: string; submissionSequence: number; timeoutMs?: number }): Promise<boolean>;
-  beginQuestion(input: { adminId: string; sessionId?: string; question: string; day: string }): Promise<{ messageId: string; sessionId: string; allowed: boolean; waitExpired?: boolean; waitedMs?: number; submissionSequence?: number; sources?: QaSource[] }>;
+  beginQuestion(input: { adminId: string; sessionId?: string; question: string; day: string }): Promise<{ messageId: string; sessionId: string; allowed: boolean; waitExpired?: boolean; waitedMs?: number; submissionSequence?: number }>;
   settleQuestion(input: {
     adminId: string;
     messageId: string;
@@ -62,8 +71,13 @@ export type QaProviderResult = {
 };
 
 export type QaProvider = {
-  complete(input: { modelId: string; question: string; sources: QaSource[]; maxOutputTokens: number }): Promise<QaProviderResult>;
+  complete(input: { modelId: string; question: string; wikiPages: Array<Pick<QaWikiPage, "slug" | "title" | "body">>; sources: QaSource[]; maxOutputTokens: number }): Promise<QaProviderResult>;
 };
+
+const MAX_WIKI_PAGES = 3;
+const MAX_ARTICLE_SOURCES = 5;
+const MAX_WIKI_PAGE_CHARACTERS = 4000;
+const MAX_ARTICLE_SOURCE_CHARACTERS = 1600;
 
 const requireAdmin = (session: Session | undefined): Session => {
   if (!session) throw new AuthError("UNAUTHENTICATED", "请先登录。");
@@ -81,10 +95,12 @@ export function createQaService(input: {
   repository: QaRepository;
   provider: QaProvider;
   enabled: boolean;
+  wikiSearch?: (query: string, limit: number) => Promise<QaWikiPage[]>;
   modelId?: string;
   modelIds?: string[];
 }) {
   const { repository, provider, enabled, modelId = "deepseek-chat", modelIds = [modelId] } = input;
+  const wikiSearch = input.wikiSearch ?? searchPublishedWikiPages;
 
   return {
     async listSessions(session: Session | undefined) {
@@ -107,7 +123,6 @@ export function createQaService(input: {
         if (reservation.waitExpired) throw new AuthError("MODEL_UNAVAILABLE", "问答队列繁忙，请稍后主动重试。");
         throw new AuthError("RATE_LIMITED", "今日成功回答次数已用完。");
       }
-      const sources = reservation.sources ?? await repository.listPublishedSources();
       const inOrder = await repository.waitForTurn({
         adminId: admin.id,
         sessionId: reservation.sessionId,
@@ -118,6 +133,25 @@ export function createQaService(input: {
         await repository.settleQuestion({ adminId: admin.id, messageId: reservation.messageId, status: "timed_out" });
         throw new AuthError("MODEL_UNAVAILABLE", "问答队列等待超时，请稍后主动重试。");
       }
+      const candidates = (await wikiSearch(input.question.trim(), MAX_WIKI_PAGES)).slice(0, MAX_WIKI_PAGES);
+      const sourceIds = [...new Set(candidates.flatMap((page) => page.sources.map(({ articleVersionId }) => articleVersionId)))];
+      const retrievedSources = sourceIds.length
+        ? await repository.findPublishedSources(sourceIds, input.question.trim(), MAX_ARTICLE_SOURCES)
+        : [];
+      let sources = retrievedSources.slice(0, MAX_ARTICLE_SOURCES).map((source) => ({
+        ...source,
+        contentText: source.contentText.slice(0, MAX_ARTICLE_SOURCE_CHARACTERS),
+      }));
+      const currentSourceIds = new Set(sources.map(({ articleVersionId }) => articleVersionId));
+      let wikiPages = candidates
+        .filter((page) => page.sources.some(({ articleVersionId }) => currentSourceIds.has(articleVersionId)))
+        .map(({ slug, title, body }) => ({ slug, title, body: body.slice(0, MAX_WIKI_PAGE_CHARACTERS) }));
+      if (wikiPages.length === 0 || sources.length === 0) {
+        wikiPages = [];
+        sources = (await repository.searchPublishedSources(input.question.trim(), MAX_ARTICLE_SOURCES))
+          .slice(0, MAX_ARTICLE_SOURCES)
+          .map((source) => ({ ...source, contentText: source.contentText.slice(0, MAX_ARTICLE_SOURCE_CHARACTERS) }));
+      }
       if (sources.length === 0) {
         const answer = "当前没有可供问答的已发布文章。";
         await repository.settleQuestion({ adminId: admin.id, messageId: reservation.messageId, status: "refused", answer, modelId: selectedModel });
@@ -125,7 +159,7 @@ export function createQaService(input: {
       }
       let result: QaProviderResult;
       try {
-        result = await provider.complete({ modelId: selectedModel, question: input.question.trim(), sources, maxOutputTokens: 1000 });
+        result = await provider.complete({ modelId: selectedModel, question: input.question.trim(), wikiPages, sources, maxOutputTokens: 1000 });
       } catch (error) {
         const status = error instanceof Error && error.name === "TimeoutError" ? "timed_out" : "failed";
         try {

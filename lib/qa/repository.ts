@@ -22,17 +22,57 @@ const database = (): Db => {
 
 const pause = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-const publishedSourcesQuery = `
-  SELECT v.id AS "articleVersionId", a.slug, v.title,
-    '/articles/' || a.slug || '?version=' || v.id AS url,
-    v.content_text AS "contentText"
-  FROM articles a
-  JOIN article_versions v ON v.id = a.current_published_version_id AND v.article_id = a.id
-  JOIN categories c ON c.id = a.category_id AND c.del_flag = false
-  WHERE v.status = 'published' AND v.del_flag = false
-    AND a.archived_at IS NULL AND a.deleted_at IS NULL AND a.del_flag = false
-  ORDER BY v.published_at DESC, v.created_at DESC
-`;
+const MAX_ARTICLE_CONTEXT_CHARACTERS = 1600;
+
+function searchTerms(query: string): string[] {
+  const normalized = query.toLocaleLowerCase("zh-CN")
+    .replace(/什么|哪些|如何|怎么|为什么|是否|能否|请|介绍|说明|描述|解释|文章|内容|什么|的|是|和|与|吗|呢|？|\?/gu, "");
+  const terms = new Set<string>();
+  for (const token of normalized.match(/[\p{Script=Han}]+|[a-z0-9_]+/giu) ?? []) {
+    if (/^[\p{Script=Han}]+$/u.test(token)) {
+      const chars = Array.from(token);
+      if (chars.length === 1) terms.add(chars[0]);
+      for (let index = 0; index < chars.length - 1; index += 1) terms.add(chars.slice(index, index + 2).join(""));
+    } else {
+      terms.add(token);
+    }
+  }
+  return [...terms].slice(0, 12);
+}
+
+function sourceSearchQuery(onlyIds: boolean) {
+  return `
+    SELECT v.id AS "articleVersionId", a.slug, v.title,
+      '/articles/' || a.slug || '?version=' || v.id AS url,
+      substring(v.content_text FROM greatest(position(lower(matched_source.term) IN lower(v.content_text)) - 400, 1) FOR ${MAX_ARTICLE_CONTEXT_CHARACTERS}) AS "contentText"
+    FROM articles a
+    JOIN article_versions v ON v.id = a.current_published_version_id AND v.article_id = a.id
+    JOIN categories c ON c.id = a.category_id AND c.del_flag = false
+    CROSS JOIN LATERAL (
+      SELECT term, count(*) OVER () AS relevance
+      FROM unnest($1::text[]) AS terms(term)
+      WHERE position(lower(term) IN lower(v.content_text)) > 0
+      ORDER BY position(lower(term) IN lower(v.title)) DESC, length(term) DESC
+      LIMIT 1
+    ) matched_source
+    WHERE v.status = 'published' AND v.del_flag = false
+      AND a.archived_at IS NULL AND a.deleted_at IS NULL AND a.del_flag = false
+      AND ${onlyIds ? "v.id = ANY($2::uuid[])" : "true"}
+    ORDER BY position(lower(matched_source.term) IN lower(v.title)) DESC,
+      matched_source.relevance DESC, v.published_at DESC, v.created_at DESC
+    LIMIT $${onlyIds ? 3 : 2}
+  `;
+}
+
+async function findRelevantPublishedSources(query: string, limit: number, articleVersionIds?: string[]): Promise<QaSource[]> {
+  const terms = searchTerms(query);
+  if (terms.length === 0 || (articleVersionIds && articleVersionIds.length === 0)) return [];
+  const boundedLimit = Math.max(1, Math.min(Math.floor(limit), 5));
+  const result = articleVersionIds
+    ? await database().query<QueryResultRow & QaSource>(sourceSearchQuery(true), [terms, [...new Set(articleVersionIds)], boundedLimit])
+    : await database().query<QueryResultRow & QaSource>(sourceSearchQuery(false), [terms, boundedLimit]);
+  return result.rows;
+}
 
 async function expireStaleQuestions(client: PoolClient, adminId: string): Promise<void> {
   await client.query(`
@@ -127,9 +167,12 @@ export const qaRepository: QaRepository = {
     await database().query("DELETE FROM qa_sessions WHERE id = $1 AND admin_id = $2", [sessionId, adminId]);
   },
 
-  async listPublishedSources(): Promise<QaSource[]> {
-    const result = await database().query<QueryResultRow & QaSource>(publishedSourcesQuery);
-    return result.rows;
+  async searchPublishedSources(query, limit) {
+    return findRelevantPublishedSources(query, limit);
+  },
+
+  async findPublishedSources(articleVersionIds, query, limit) {
+    return findRelevantPublishedSources(query, limit, articleVersionIds);
   },
 
   async beginQuestion({ adminId, sessionId, question, day }) {
@@ -137,7 +180,6 @@ export const qaRepository: QaRepository = {
     const client = await database().connect();
     let queuedMessageId = "";
     let submissionSequence = 0;
-    let sources: QaSource[] = [];
     let activeSessionId = sessionId ?? "";
     try {
       await client.query("BEGIN");
@@ -163,8 +205,6 @@ export const qaRepository: QaRepository = {
         VALUES ($1, $2, $3, $4, $5, 'queued', $2, $2) RETURNING id
       `, [activeSessionId, adminId, day, submissionSequence, question]);
       queuedMessageId = message.rows[0].id;
-      const sourceResult = await client.query<QueryResultRow & QaSource>(publishedSourcesQuery);
-      sources = sourceResult.rows;
       await client.query("COMMIT");
     } catch (error) {
       await client.query("ROLLBACK");
@@ -189,7 +229,6 @@ export const qaRepository: QaRepository = {
         allowed: true,
         waitedMs: Date.now() - startedAt,
         submissionSequence,
-        sources,
       };
     } catch (error) {
       await quotaClient.query("ROLLBACK");

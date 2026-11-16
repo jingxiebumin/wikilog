@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Session } from "@/lib/auth/types";
-import { createQaService, type QaProvider, type QaRepository, type QaSource } from "./service";
+import { createQaService, type QaProvider, type QaRepository, type QaWikiPage } from "./service";
 
 const admin = (role: "admin" | "reader" = "admin"): Session => ({
   id: "00000000-0000-4000-8000-000000000001",
@@ -14,13 +14,15 @@ const admin = (role: "admin" | "reader" = "admin"): Session => ({
 });
 
 const dependencies = (overrides: Partial<Parameters<typeof createQaService>[0]> = {}) => {
-  const listPublishedSources = vi.fn<() => Promise<QaSource[]>>(async () => []);
+  const searchPublishedSources = vi.fn<QaRepository["searchPublishedSources"]>(async () => []);
+  const findPublishedSources = vi.fn<QaRepository["findPublishedSources"]>(async () => []);
   const complete = vi.fn<QaProvider["complete"]>(async () => ({ answer: "回答", refused: false, evidenceSupported: true, citations: [], inputTokens: 0, outputTokens: 0 }));
   const repository: QaRepository = {
     getSession: vi.fn(async () => undefined),
     listSessions: vi.fn(async () => []),
     deleteSession: vi.fn(async () => undefined),
-    listPublishedSources,
+    searchPublishedSources,
+    findPublishedSources,
     waitForTurn: vi.fn(async () => true),
     beginQuestion: vi.fn(async () => ({ messageId: "message-id", sessionId: "qa-session-id", allowed: true })),
     settleQuestion: vi.fn(async () => true),
@@ -28,20 +30,151 @@ const dependencies = (overrides: Partial<Parameters<typeof createQaService>[0]> 
   const provider: QaProvider = {
     complete,
   };
+  const wikiSearch = vi.fn<NonNullable<Parameters<typeof createQaService>[0]["wikiSearch"]>>(async () => [] as QaWikiPage[]);
   return {
     repository,
     provider,
-    listPublishedSources,
+    searchPublishedSources,
+    findPublishedSources,
     complete,
-    service: createQaService({ repository, provider, enabled: true, ...overrides }),
+    wikiSearch,
+    service: createQaService({ repository, provider, wikiSearch, enabled: true, ...overrides }),
   };
 };
 
 describe("admin article Q&A service", () => {
+  it("uses a small Wiki context and only its verified article-version sources first", async () => {
+    const { service, wikiSearch, findPublishedSources, searchPublishedSources, complete } = dependencies();
+    const source = {
+      articleVersionId: "wiki-source-version",
+      slug: "published-article",
+      title: "已发布文章",
+      url: "/articles/published-article?version=wiki-source-version",
+      contentText: "数据库事务保证状态变更的一致性。",
+    };
+    wikiSearch.mockResolvedValue([{
+      slug: "database-transactions",
+      title: "数据库事务",
+      body: "事务以原子方式组织相关数据操作。",
+      sources: [{ articleVersionId: source.articleVersionId }],
+    }]);
+    findPublishedSources.mockResolvedValue([source]);
+    complete.mockResolvedValue({
+      answer: "事务以原子方式组织数据操作。",
+      refused: false,
+      evidenceSupported: true,
+      citations: [{ sourceId: source.articleVersionId, quote: "数据库事务保证状态变更的一致性。" }],
+      inputTokens: 15,
+      outputTokens: 9,
+    });
+
+    const result = await service.ask(admin(), { question: "数据库事务有什么作用？" });
+
+    expect(wikiSearch).toHaveBeenCalledWith("数据库事务有什么作用？", 3);
+    expect(findPublishedSources).toHaveBeenCalledWith([source.articleVersionId], "数据库事务有什么作用？", 5);
+    expect(searchPublishedSources).not.toHaveBeenCalled();
+    expect(complete).toHaveBeenCalledWith(expect.objectContaining({
+      wikiPages: [expect.objectContaining({ slug: "database-transactions" })],
+      sources: [source],
+    }));
+    expect(result).toMatchObject({ status: "succeeded", citations: [{ articleVersionId: source.articleVersionId }] });
+  });
+
+  it("falls back to a limited set of relevant published article excerpts when Wiki has no applicable page", async () => {
+    const { service, wikiSearch, findPublishedSources, searchPublishedSources, complete } = dependencies();
+    const source = {
+      articleVersionId: "matched-version",
+      slug: "published-article",
+      title: "已发布文章",
+      url: "/articles/published-article?version=matched-version",
+      contentText: "事务保证状态变更的一致性。",
+    };
+    wikiSearch.mockResolvedValue([]);
+    searchPublishedSources.mockResolvedValue([source]);
+    complete.mockResolvedValue({
+      answer: "事务能保证状态变更一致。",
+      refused: false,
+      evidenceSupported: true,
+      citations: [{ sourceId: source.articleVersionId, quote: "事务保证状态变更的一致性。" }],
+      inputTokens: 15,
+      outputTokens: 9,
+    });
+
+    await service.ask(admin(), { question: "事务能保证什么？" });
+
+    expect(findPublishedSources).not.toHaveBeenCalled();
+    expect(searchPublishedSources).toHaveBeenCalledWith("事务能保证什么？", 5);
+    expect(complete).toHaveBeenCalledWith(expect.objectContaining({ wikiPages: [], sources: [source] }));
+  });
+
+  it("falls back when Wiki results no longer have valid current article sources", async () => {
+    const { service, wikiSearch, findPublishedSources, searchPublishedSources, complete } = dependencies();
+    const source = {
+      articleVersionId: "current-version",
+      slug: "published-article",
+      title: "已发布文章",
+      url: "/articles/published-article?version=current-version",
+      contentText: "事务保证状态变更的一致性。",
+    };
+    wikiSearch.mockResolvedValue([{
+      slug: "database-transactions",
+      title: "数据库事务",
+      body: "过期页面。",
+      sources: [{ articleVersionId: "archived-version" }],
+    }]);
+    findPublishedSources.mockResolvedValue([]);
+    searchPublishedSources.mockResolvedValue([source]);
+
+    await service.ask(admin(), { question: "事务能保证什么？" });
+
+    expect(complete).toHaveBeenCalledWith(expect.objectContaining({ wikiPages: [], sources: [source] }));
+    expect(searchPublishedSources).toHaveBeenCalledOnce();
+  });
+
+  it("refuses without calling the provider when neither Wiki nor article search finds evidence", async () => {
+    const { service, repository, wikiSearch, searchPublishedSources, complete } = dependencies();
+    wikiSearch.mockResolvedValue([]);
+    searchPublishedSources.mockResolvedValue([]);
+
+    const result = await service.ask(admin(), { question: "没有相关资料的问题" });
+
+    expect(result).toMatchObject({ status: "refused", citations: [] });
+    expect(complete).not.toHaveBeenCalled();
+    expect(repository.settleQuestion).toHaveBeenCalledWith(expect.objectContaining({ status: "refused" }));
+  });
+
+  it("caps Wiki pages and article context before it reaches the provider", async () => {
+    const { service, wikiSearch, findPublishedSources, complete } = dependencies();
+    wikiSearch.mockResolvedValue(Array.from({ length: 4 }, (_, index) => ({
+      slug: `topic-${index}`,
+      title: `主题 ${index}`,
+      body: "维基正文".repeat(1500),
+      sources: [{ articleVersionId: `version-${index}` }],
+    })));
+    findPublishedSources.mockResolvedValue(Array.from({ length: 6 }, (_, index) => ({
+      articleVersionId: `version-${index}`,
+      slug: `article-${index}`,
+      title: `文章 ${index}`,
+      url: `/articles/article-${index}`,
+      contentText: "文章原文".repeat(1000),
+    })));
+
+    await service.ask(admin(), { question: "主题内容" });
+
+    const context = vi.mocked(complete).mock.calls[0][0];
+    expect(context.wikiPages).toHaveLength(3);
+    expect(context.wikiPages.every(({ body }) => body.length === 4000)).toBe(true);
+    expect(context.sources).toHaveLength(5);
+    expect(context.sources.every(({ contentText }) => contentText.length === 1600)).toBe(true);
+  });
+
   it("keeps Q&A unavailable unless both the feature and data-policy gates are enabled", async () => {
-    const { service, provider } = dependencies({ enabled: false });
+    const { service, provider, wikiSearch, repository } = dependencies({ enabled: false });
 
     await expect(service.listSessions(admin())).rejects.toMatchObject({ code: "DATABASE_UNAVAILABLE" });
+    await expect(service.ask(admin(), { question: "问题" })).rejects.toMatchObject({ code: "DATABASE_UNAVAILABLE" });
+    expect(wikiSearch).not.toHaveBeenCalled();
+    expect(repository.beginQuestion).not.toHaveBeenCalled();
     expect(provider.complete).not.toHaveBeenCalled();
   });
 
@@ -78,7 +211,6 @@ describe("admin article Q&A service", () => {
       allowed: true,
       waitedMs: 50_000,
       submissionSequence: 2,
-      sources: [],
     });
 
     await service.ask(admin(), { sessionId: "qa-session-id", question: "问题" });
@@ -87,7 +219,7 @@ describe("admin article Q&A service", () => {
   });
 
   it("returns the session created with the first valid question", async () => {
-    const { service, repository, complete, listPublishedSources } = dependencies();
+    const { service, repository, complete, searchPublishedSources } = dependencies();
     const source = {
       articleVersionId: "published-version-id",
       slug: "published-article",
@@ -95,7 +227,7 @@ describe("admin article Q&A service", () => {
       url: "/articles/published-article?version=published-version-id",
       contentText: "数据库事务保证状态变更的一致性。",
     };
-    listPublishedSources.mockResolvedValue([source]);
+    searchPublishedSources.mockResolvedValue([source]);
     complete.mockResolvedValue({
       answer: "事务确保状态变更一致。",
       refused: false,
@@ -119,7 +251,7 @@ describe("admin article Q&A service", () => {
   });
 
   it("stores only verified citations bound to the published article version", async () => {
-    const { service, complete, listPublishedSources, repository } = dependencies();
+    const { service, complete, searchPublishedSources, repository } = dependencies();
     const source = {
       articleVersionId: "published-version-id",
       slug: "published-article",
@@ -127,7 +259,7 @@ describe("admin article Q&A service", () => {
       url: "/articles/published-article?version=published-version-id",
       contentText: "数据库事务保证状态变更的一致性。",
     };
-    listPublishedSources.mockResolvedValue([source]);
+    searchPublishedSources.mockResolvedValue([source]);
     complete.mockResolvedValue({
       answer: "数据库事务保证状态变更的一致性。",
       refused: false,
@@ -159,8 +291,8 @@ describe("admin article Q&A service", () => {
   });
 
   it("accepts a supported paraphrase without requiring shared keywords", async () => {
-    const { service, complete, listPublishedSources } = dependencies();
-    listPublishedSources.mockResolvedValue([{
+    const { service, complete, searchPublishedSources } = dependencies();
+    searchPublishedSources.mockResolvedValue([{
       articleVersionId: "published-version-id",
       slug: "published-article",
       title: "已发布文章",
@@ -186,8 +318,8 @@ describe("admin article Q&A service", () => {
   });
 
   it("turns a response with no verifiable source into a refusal", async () => {
-    const { service, complete, listPublishedSources, repository } = dependencies();
-    listPublishedSources.mockResolvedValue([{
+    const { service, complete, searchPublishedSources, repository } = dependencies();
+    searchPublishedSources.mockResolvedValue([{
       articleVersionId: "published-version-id",
       slug: "published-article",
       title: "已发布文章",
@@ -210,8 +342,8 @@ describe("admin article Q&A service", () => {
   });
 
   it("allows an evidence-supported paraphrase for a broad question", async () => {
-    const { service, complete, listPublishedSources, repository } = dependencies();
-    listPublishedSources.mockResolvedValue([{
+    const { service, complete, searchPublishedSources, repository } = dependencies();
+    searchPublishedSources.mockResolvedValue([{
       articleVersionId: "published-version-id",
       slug: "published-article",
       title: "已发布文章",
@@ -234,8 +366,8 @@ describe("admin article Q&A service", () => {
   });
 
   it("refuses an answer longer than the specified target", async () => {
-    const { service, complete, listPublishedSources, repository } = dependencies();
-    listPublishedSources.mockResolvedValue([{
+    const { service, complete, searchPublishedSources, repository } = dependencies();
+    searchPublishedSources.mockResolvedValue([{
       articleVersionId: "published-version-id",
       slug: "published-article",
       title: "已发布文章",
@@ -258,8 +390,8 @@ describe("admin article Q&A service", () => {
   });
 
   it("refuses a model answer that is not supported by its cited source", async () => {
-    const { service, complete, listPublishedSources, repository } = dependencies();
-    listPublishedSources.mockResolvedValue([{
+    const { service, complete, searchPublishedSources, repository } = dependencies();
+    searchPublishedSources.mockResolvedValue([{
       articleVersionId: "published-version-id",
       slug: "published-article",
       title: "已发布文章",
@@ -282,8 +414,8 @@ describe("admin article Q&A service", () => {
   });
 
   it("reports provider failures as a safe model-unavailable error and records timeout state", async () => {
-    const { service, complete, listPublishedSources, repository } = dependencies();
-    listPublishedSources.mockResolvedValue([{
+    const { service, complete, searchPublishedSources, repository } = dependencies();
+    searchPublishedSources.mockResolvedValue([{
       articleVersionId: "published-version-id",
       slug: "published-article",
       title: "已发布文章",

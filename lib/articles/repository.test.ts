@@ -38,7 +38,11 @@ describe("article version repository", () => {
   beforeEach(async () => {
     database = new PGlite();
     state.database = database;
-    for (const file of ["0001_initial.sql", "0002_audit_fields.sql", "0003_reader_accounts.sql", "0004_article_sources.sql", "0009_article_images.sql"]) {
+    for (const file of [
+      "0001_initial.sql", "0002_audit_fields.sql", "0003_reader_accounts.sql", "0004_article_sources.sql",
+      "0005_favorites.sql", "0006_reader_status_audit.sql", "0007_reader_profile_audit.sql",
+      "0008_personal_center.sql", "0009_article_images.sql", "0010_qa.sql", "0011_wiki.sql", "0012_wiki_generation.sql",
+    ]) {
       await database.exec(await readFile(path.join(process.cwd(), "db/migrations", file), "utf8"));
     }
     const admin = await database.query<{ id: string }>(`
@@ -58,6 +62,10 @@ describe("article version repository", () => {
     await saveArticleDraft({ ...parsed("First"), sourceMdx: "source-v1" }, adminId);
     const first = await database.query<{ id: string }>("SELECT id FROM article_versions WHERE version_number = 1");
     await publishArticleVersion(first.rows[0].id, adminId);
+    const firstJob = await database.query<{ article_version_id: string; status: string }>(`
+      SELECT article_version_id, status FROM wiki_generation_jobs WHERE kind = 'update'
+    `);
+    expect(firstJob.rows).toEqual([{ article_version_id: first.rows[0].id, status: "queued" }]);
 
     await saveArticleDraft({ ...parsed("Second"), sourceMdx: "source-v2" }, adminId);
     const beforePublish = await database.query<{ title: string; status: string; pointer_matches: boolean }>(`
@@ -71,6 +79,13 @@ describe("article version repository", () => {
 
     const second = await database.query<{ id: string }>("SELECT id FROM article_versions WHERE version_number = 2");
     await publishArticleVersion(second.rows[0].id, adminId);
+    const queuedJobs = await database.query<{ article_version_id: string; status: string }>(`
+      SELECT article_version_id, status FROM wiki_generation_jobs WHERE kind = 'update' ORDER BY created_at, id
+    `);
+    expect(queuedJobs.rows).toEqual([
+      { article_version_id: first.rows[0].id, status: "queued" },
+      { article_version_id: second.rows[0].id, status: "queued" },
+    ]);
     const afterPublish = await database.query<{ title: string; status: string; source_mdx: string; pointer_matches: boolean }>(`
       SELECT v.title, v.status, v.source_mdx, a.current_published_version_id = v.id AS pointer_matches
       FROM article_versions v JOIN articles a ON a.id = v.article_id ORDER BY v.version_number

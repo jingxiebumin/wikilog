@@ -24,6 +24,7 @@ describe("DeepSeek provider", () => {
     const result = await deepSeekProvider.complete({
       modelId: "deepseek-chat",
       question: "事务有什么特性？",
+      wikiPages: [{ slug: "transactions", title: "数据库事务", body: "事务是一组数据库操作的组织方式。" }],
       sources: [{ articleVersionId: "version-id", slug: "db", title: "数据库", url: "/articles/db", contentText: "事务具备原子性。" }],
       maxOutputTokens: 1200,
     });
@@ -35,6 +36,9 @@ describe("DeepSeek provider", () => {
     }));
     expect(JSON.stringify(result)).not.toContain("server-secret");
     expect(result).toMatchObject({ inputTokens: 31, outputTokens: 9, citations: [{ sourceId: "version-id" }] });
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(body.messages[1].content).toContain("数据库事务");
+    expect(body.messages[1].content).toContain("事务具备原子性");
   });
 
   it("does not expose provider response bodies or retry provider errors", async () => {
@@ -46,6 +50,7 @@ describe("DeepSeek provider", () => {
     await expect(deepSeekProvider.complete({
       modelId: "deepseek-chat",
       question: "问题",
+      wikiPages: [],
       sources: [],
       maxOutputTokens: 1200,
     })).rejects.toThrow("问答服务暂时不可用。");
