@@ -9,9 +9,9 @@ import { FavoriteButton } from "@/components/favorite-button";
 import { getCurrentSession } from "@/lib/auth/service";
 import { getAdminQaSettings } from "@/lib/qa";
 import { readerHasFavorite } from "@/lib/favorites/service";
-import { getCategoryBySlug, getPublishedArticle, getPublishedArticleVersion, listPublishedArticles } from "@/lib/public-content";
+import { getCategoryBySlug, getPublishedArticle, listPublishedArticles, listTags } from "@/lib/public-content";
 
-type ArticlePageProps = { params: Promise<{ slug: string }>; searchParams: Promise<{ version?: string }> };
+type ArticlePageProps = { params: Promise<{ slug: string }> };
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: ArticlePageProps): Promise<Metadata> {
@@ -20,17 +20,17 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
   return article ? { title: article.title, description: article.summary } : { title: "文章未找到" };
 }
 
-export default async function ArticlePage({ params, searchParams }: ArticlePageProps) {
-  const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const article = query.version
-    ? await getPublishedArticleVersion(slug, query.version)
-    : await getPublishedArticle(slug);
+export default async function ArticlePage({ params }: ArticlePageProps) {
+  const { slug } = await params;
+  const article = await getPublishedArticle(slug);
   if (!article) notFound();
 
-  const [category, allArticles] = await Promise.all([
+  const [category, allArticles, tagOptions] = await Promise.all([
     getCategoryBySlug(article.category),
     listPublishedArticles(),
+    listTags(),
   ]);
+  const tagNames = new Map(tagOptions.map(({ slug, name }) => [slug, name]));
   const relatedArticles = allArticles
     .filter((item) => item.slug !== article.slug && item.category === article.category)
     .slice(0, 2);
@@ -72,7 +72,7 @@ export default async function ArticlePage({ params, searchParams }: ArticlePageP
           <aside className="article-aside">
             <span className="article-aside-label">本文关键词</span>
             <div className="article-tag-list">
-              {article.tags.map((tag) => <Link href={`/tags/${tag}`} key={tag}><Hash aria-hidden="true" size={12} />{tag}</Link>)}
+              {article.tags.map((tag) => <Link href={`/tags/${tag}`} key={tag}><Hash aria-hidden="true" size={12} />{tagNames.get(tag) ?? tag}</Link>)}
             </div>
             <Link className="article-aside-category" href={`/categories/${article.category}`}>
               更多{category?.name} <ArrowUpRight aria-hidden="true" size={14} />

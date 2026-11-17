@@ -5,7 +5,6 @@ import { AuthError } from "@/lib/auth/errors";
 import { requireSession } from "@/lib/auth/service";
 import { adminArticleList } from "@/lib/articles/service";
 import { listAdminWikiPages } from "@/lib/wiki/service";
-import { isWikiGenerationEnabled } from "@/lib/wiki/generation-index";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +26,7 @@ export default async function AdminWikiPage() {
     <section className="page account-page admin-section-page">
       <AdminWorkspaceNav active="/admin/wiki" />
       <div className="page-heading"><p className="eyebrow"><span className="eyebrow-mark" />管理员设置</p><h1>Wiki 管理</h1><p>维护主题页面、文章来源和已审核关系。</p></div>
-      <AdminWikiManager initialPages={pages} publishedArticles={publishedArticles} generationEnabled={isWikiGenerationEnabled()} />
+      <AdminWikiManager initialPages={pages} publishedArticles={publishedArticles} />
     </section>
   );
 }

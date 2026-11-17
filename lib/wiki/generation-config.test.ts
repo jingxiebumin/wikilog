@@ -12,7 +12,7 @@ describe("Wiki generation config", () => {
     expect(readWikiGenerationConfig().enabled).toBe(false);
 
     vi.stubEnv("DEEPSEEK_DATA_POLICY_VERIFIED", "true");
-    expect(readWikiGenerationConfig().enabled).toBe(true);
+    expect(readWikiGenerationConfig().enabled).toBe(false);
   });
 
   it("requires an explicit feature flag, API key, and valid model", () => {

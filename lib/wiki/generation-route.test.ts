@@ -38,14 +38,13 @@ describe("admin Wiki generation trigger", () => {
     expect(stubs.after).not.toHaveBeenCalled();
   });
 
-  it("queues the full initial run and schedules processing after the response", async () => {
+  it("cannot enable provider calls through configuration before the feature is approved", async () => {
     stubs.isWikiGenerationEnabled.mockReturnValue(true);
     const response = await POST();
 
-    expect(response.status).toBe(202);
-    expect(await response.json()).toMatchObject({ queued: true });
-    expect(stubs.enqueueInitialWikiGeneration).toHaveBeenCalledWith("admin-id");
-    expect(stubs.after).toHaveBeenCalledOnce();
+    expect(response.status).toBe(503);
+    expect(stubs.enqueueInitialWikiGeneration).not.toHaveBeenCalled();
+    expect(stubs.after).not.toHaveBeenCalled();
   });
 
   it("uses the standard admin 404 boundary for readers", async () => {

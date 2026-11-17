@@ -1,14 +1,20 @@
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/service";
 import { AuthError } from "@/lib/auth/errors";
-import { adminArticleList, adminUploadArticle } from "@/lib/articles/service";
-import { getArticleUploadMaxBytes, validateArticleImageLimits } from "@/lib/articles/image-storage";
+import { adminCurrentArticleList, adminSaveCurrentArticle } from "@/lib/articles/service";
 import { adminErrorResponse } from "@/lib/auth/route-utils";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const actor = await requireSession({ admin: true });
-    return NextResponse.json({ articles: await adminArticleList(actor) });
+    const params = new URL(request.url).searchParams;
+    return NextResponse.json(await adminCurrentArticleList(actor, {
+      category: params.get("category") || undefined,
+      status: (params.get("status") === "visible" || params.get("status") === "hidden") ? params.get("status") as "visible" | "hidden" : undefined,
+      search: params.get("search") || undefined,
+      page: Number(params.get("page") || 1),
+      pageSize: Number(params.get("pageSize") || 10),
+    }));
   } catch (error) {
     return adminErrorResponse(error);
   }
@@ -17,27 +23,20 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const actor = await requireSession({ admin: true });
-    const contentLength = Number(request.headers.get("content-length"));
-    if (Number.isFinite(contentLength) && contentLength > getArticleUploadMaxBytes()) {
-      throw new AuthError("INVALID_INPUT", "MDX 与图片上传总量超过限制。");
-    }
     const form = await request.formData();
     const file = form.get("file");
-    if (!(file instanceof File) || !file.name.toLowerCase().endsWith(".mdx") || file.type && !["text/plain", "text/markdown", "application/octet-stream"].includes(file.type)) {
-      throw new AuthError("INVALID_INPUT", "请选择 MDX 文件。");
+    if (file && (!(file instanceof File) || !file.name.toLowerCase().endsWith(".md") || file.type && !["text/plain", "text/markdown", "application/octet-stream"].includes(file.type))) {
+      throw new AuthError("INVALID_INPUT", "请选择 Markdown（.md）文件。");
     }
-    if (file.size > 1024 * 1024) throw new AuthError("INVALID_INPUT", "MDX 文件不能超过 1 MB。");
-    const imageFiles = form.getAll("images");
-    if (imageFiles.some((entry) => !(entry instanceof File))) throw new AuthError("INVALID_INPUT", "图片上传内容无效。");
-    const selectedImages = (imageFiles as File[]).filter((image) => image.size > 0);
-    validateArticleImageLimits(selectedImages);
-    const images = await Promise.all(selectedImages.map(async (image) => ({
-      name: image.name,
-      contentType: image.type,
-      bytes: new Uint8Array(await image.arrayBuffer()),
-    })));
-    await adminUploadArticle(actor, await file.text(), images);
-    return NextResponse.json({ ok: true }, { status: 201 });
+    if (file instanceof File && file.size > 1024 * 1024) throw new AuthError("INVALID_INPUT", "Markdown 文件不能超过 1 MB。");
+    const tags = form.getAll("tags").map(String);
+    const id = String(form.get("id") ?? "") || undefined;
+    const articleId = await adminSaveCurrentArticle(actor, {
+      id, title: String(form.get("title") ?? ""), summary: String(form.get("summary") ?? ""),
+      category: String(form.get("category") ?? ""), tags, publishedAt: String(form.get("publishedAt") ?? ""),
+      source: file instanceof File && file.size ? await file.text() : undefined, sourceFilename: file instanceof File && file.size ? file.name : undefined,
+    });
+    return NextResponse.json({ id: articleId }, { status: id ? 200 : 201 });
   } catch (error) {
     return adminErrorResponse(error);
   }

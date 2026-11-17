@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight, BookOpenText } from "lucide-react";
 import { SearchForm } from "@/components/search-form";
 import { SiteNavigation } from "@/components/site-navigation";
+import { BackToTop } from "@/components/back-to-top";
 import { getCurrentSession, publicAuthEnabled } from "@/lib/auth/service";
 
 export async function SiteShell({ children }: { children: React.ReactNode }) {
@@ -25,6 +26,7 @@ export async function SiteShell({ children }: { children: React.ReactNode }) {
           <span>写给未来的技术备忘</span>
           <Link href="/about">联系与说明 <ArrowUpRight aria-hidden="true" size={13} /></Link>
         </footer>
+        <BackToTop />
       </div>
     </div>
   );

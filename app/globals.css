@@ -344,6 +344,12 @@ input:focus-visible {
 .admin-reader-dialog h2 { margin: 0; font-size: 19px; }
 .admin-reader-dialog p { margin: 0; color: var(--ink-soft); font-size: 12px; }
 .admin-reader-dialog textarea { min-height: 78px; padding: 9px; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 3px; font: inherit; }
+.article-editor-dialog { z-index: 80; width: min(620px, calc(100vw - 28px)); }
+.article-editor-dialog form { max-width: none; }
+.article-editor-dialog .form-field input, .article-editor-dialog .form-field select { min-height: 38px; padding: 0 9px; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 3px; }
+.article-editor-dialog .form-field textarea { min-height: 84px; resize: vertical; }
+.article-editor-dialog .form-field input[type="file"] { min-height: 38px; padding: 7px; }
+.article-editor-dialog .dialogHeader > button { width: 34px; min-height: 34px; padding: 0; color: var(--ink); background: var(--surface-soft); font-size: 20px; }
 .temporary-password { display: flex; flex-direction: column; gap: 5px; margin: 0; padding: 10px; color: var(--ink-soft); background: var(--green-soft); border-left: 3px solid var(--green); font-size: 11px; }
 .temporary-password code { color: var(--ink); font-family: var(--mono); font-size: 13px; user-select: all; }
 .admin-article-manager { display: flex; flex-direction: column; gap: 18px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line); }
@@ -640,6 +646,53 @@ input:focus-visible {
 .home-main,
 .home-aside {
   min-width: 0;
+}
+
+.back-to-top {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 40;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  color: var(--ink);
+  background: var(--lime);
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.back-to-top.is-visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+
+.article-category-tabs { display: flex; gap: 6px; margin: 0 0 16px; overflow-x: auto; scrollbar-width: thin; }
+.article-category-tab { flex: 0 0 auto; min-height: 34px; padding: 0 13px; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 3px; cursor: pointer; font-size: 12px; }
+.article-category-tab[aria-selected="true"] { color: var(--ink); background: var(--lime); border-color: var(--lime); }
+.public-article-list { border-top: 1px solid var(--line); }
+.public-article-row { display: flex; align-items: stretch; justify-content: space-between; gap: 20px; min-width: 0; padding: 17px 0; border-bottom: 1px solid var(--line); }
+.public-article-row-copy { min-width: 0; flex: 1 1 auto; }
+.public-article-cover { flex: 0 0 96px; width: 96px; height: 64px; align-self: center; border: 1px solid var(--line); border-radius: 3px; object-fit: cover; }
+.public-article-row h3 { margin: 8px 0 4px; font-size: 16px; font-weight: 600; line-height: 1.45; }
+.public-article-row h3 a:hover { color: var(--green); }
+.public-article-row-copy > p { overflow: hidden; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; text-overflow: ellipsis; white-space: nowrap; }
+.public-article-row-meta { display: flex; align-items: center; gap: 14px; margin-top: 10px; color: var(--muted); font-size: 10px; }
+.public-article-row-meta > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.public-article-tags { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.article-list-loading, .article-list-sentinel { min-height: 1px; }
+.article-list-loading { margin: 12px 0; color: var(--muted); text-align: center; font-size: 11px; }
+.article-list-retry { display: block; margin: 10px auto; }
+
+@media (max-width: 560px) {
+  .public-article-row { gap: 12px; }
+  .public-article-cover { flex-basis: 72px; width: 72px; height: 48px; }
+  .public-article-row-meta { gap: 8px; }
+  .public-article-row h3 { font-size: 14px; }
+  .back-to-top { right: 14px; bottom: 14px; }
 }
 
 .section-heading {

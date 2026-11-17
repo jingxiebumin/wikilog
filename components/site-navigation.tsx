@@ -4,15 +4,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { BookOpenText, Bookmark, CircleUserRound, Hash, Layers3, LogIn, LogOut, Network, Settings } from "lucide-react";
+import { BookOpenText, Bookmark, CircleUserRound, Hash, LogIn, LogOut, Network, Settings } from "lucide-react";
 import type { UserRole } from "@/lib/auth/types";
 
 const items = [
-  { href: "/", label: "最新文章", icon: BookOpenText },
-  { href: "/categories", label: "主题分类", icon: Layers3 },
-  { href: "/tags", label: "标签索引", icon: Hash },
+  { href: "/", label: "首页", icon: BookOpenText },
+  { href: "/tags", label: "标签", icon: Hash },
   { href: "/wiki", label: "知识图谱", icon: Network },
-  { href: "/about", label: "关于作者", icon: CircleUserRound },
+  { href: "/about", label: "关于", icon: CircleUserRound },
 ];
 
 export function SiteNavigation({

@@ -13,6 +13,14 @@ export type ParsedArticle = {
   cover: "boundary" | "search" | "content" | "budget" | "database";
 };
 
+export type ArticleFormMetadata = {
+  title: string;
+  summary?: string;
+  category: string;
+  tags?: string[];
+  publishedAt: string;
+};
+
 export class ArticleSourceError extends Error {
   constructor(message: string) {
     super(message);
@@ -150,6 +158,23 @@ function parseBody(markdown: string, imageAssets: Record<string, string>): Artic
   return blocks;
 }
 
+function deriveSummary(markdown: string): string {
+  let inCode = false;
+  for (const line of markdown.split("\n")) {
+    const text = line.trim();
+    if (text.startsWith("```")) { inCode = !inCode; continue; }
+    if (inCode || !text || /^#{1,6}\s/.test(text) || /^!\[/.test(text) || /^[-*+]\s/.test(text) || /^\d+\.\s/.test(text)) continue;
+    return text
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/<[^>]*>/g, "")
+      .replace(/[*_`~>#]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 120);
+  }
+  return "";
+}
+
 export function parseArticleSource(source: string, categorySlugs: string[], imageAssets: Record<string, string> = {}): ParsedArticle {
   if (Buffer.byteLength(source, "utf8") > 1024 * 1024) fail("MDX 文件不能超过 1 MiB。");
   const { metadata, body: markdown } = parseFrontmatter(source);
@@ -182,4 +207,26 @@ export function parseArticleSource(source: string, categorySlugs: string[], imag
     readMinutes: Math.max(1, Math.ceil(wordCount / 300)),
     cover: "content",
   };
+}
+
+/** Parses the Markdown body while keeping article configuration outside the source file. */
+export function parseArticleForm(source: string, metadata: ArticleFormMetadata, categorySlugs: string[], imageAssets: Record<string, string> = {}): ParsedArticle {
+  if (Buffer.byteLength(source, "utf8") > 1024 * 1024) fail("Markdown 文件不能超过 1 MiB。");
+  const title = metadata.title.trim();
+  if (!title) fail("标题不能为空。");
+  if (title.length > 160) fail("标题不能超过 160 个字符。");
+  const summary = (metadata.summary ?? "").trim();
+  if (summary.length > 500) fail("摘要不能超过 500 个字符。");
+  const category = metadata.category.trim();
+  if (!categorySlugs.includes(category)) fail("category 不在受控分类列表中。");
+  const tags = [...new Set((metadata.tags ?? []).map((tag) => tag.trim()).filter(Boolean))];
+  if (tags.length > 2 || tags.some((tag) => !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(tag))) fail("标签最多选择两个且必须来自受控列表。");
+  const publishedAt = metadata.publishedAt.trim();
+  const date = new Date(`${publishedAt}T00:00:00Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(publishedAt) || Number.isNaN(date.valueOf()) || date.toISOString().slice(0, 10) !== publishedAt) fail("文章日期必须是 YYYY-MM-DD 日期。");
+  const body = parseBody(source.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n"), imageAssets);
+  const contentText = body.map((block) => block.type === "list" ? block.items.join(" ") : block.type === "code" ? block.code : block.type === "image" ? "" : block.text).join(" ").trim();
+  const generatedSummary = summary || deriveSummary(source);
+  const wordCount = contentText.match(/[\p{Script=Han}]|[A-Za-z0-9]+/gu)?.length ?? 1;
+  return { slug: "", title, summary: generatedSummary, publishedAt, category, tags, content: body, contentText, readMinutes: Math.max(1, Math.ceil(wordCount / 300)), cover: "content" };
 }

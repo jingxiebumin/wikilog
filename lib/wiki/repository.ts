@@ -131,7 +131,7 @@ async function publicPageBySlug(slug: string): Promise<PublishedWikiPage | undef
   const page = mapPublicPage(row);
   const [sources, relations] = await Promise.all([
     database().query<WikiPageSource & QueryResultRow>(`
-      SELECT article_version.id AS "articleVersionId", article.slug AS "articleSlug",
+      SELECT article_version.id AS "articleVersionId", article.public_id AS "articleSlug",
         article_version.title AS "articleTitle"
       FROM wiki_page_version_sources source
       JOIN article_versions article_version ON article_version.id = source.article_version_id
@@ -228,15 +228,28 @@ async function insertDraft(
 
   const locked = await client.query<{ id: string }>("SELECT id FROM wiki_pages WHERE id = $1 FOR UPDATE", [pageId]);
   if (!locked.rows[0]) throw new Error("Wiki 页面不存在。");
-  const versionNumber = await client.query<{ next_version: number }>(`
-    SELECT COALESCE(MAX(version_number), 0) + 1 AS next_version
-    FROM wiki_page_versions WHERE page_id = $1
+  const existingDraft = await client.query<{ id: string }>(`
+    SELECT id FROM wiki_page_versions
+    WHERE page_id = $1 AND status = 'draft' AND del_flag = false
+    FOR UPDATE
   `, [pageId]);
-  const version = await client.query<{ id: string }>(`
-    INSERT INTO wiki_page_versions (
-      page_id, version_number, status, title, body, merge_source_page_id, created_by, updated_by
-    ) VALUES ($1, $2, 'draft', $3, $4, $5, $6, $6) RETURNING id
-  `, [pageId, versionNumber.rows[0].next_version, input.title.trim(), input.body.trim(), mergeSourcePageId ?? null, actorId]);
+  const version = existingDraft.rows[0]
+    ? await client.query<{ id: string }>(`
+      UPDATE wiki_page_versions SET title = $2, body = $3,
+        merge_source_page_id = COALESCE($4, merge_source_page_id),
+        updated_at = now(), updated_by = $5 WHERE id = $1 RETURNING id
+    `, [existingDraft.rows[0].id, input.title.trim(), input.body.trim(), mergeSourcePageId ?? null, actorId])
+    : await client.query<{ id: string }>(`
+      INSERT INTO wiki_page_versions (
+        page_id, version_number, status, title, body, merge_source_page_id, created_by, updated_by
+      ) VALUES (
+        $1, (SELECT COALESCE(MAX(version_number), 0) + 1 FROM wiki_page_versions WHERE page_id = $1),
+        'draft', $2, $3, $4, $5, $5
+      ) RETURNING id
+    `, [pageId, input.title.trim(), input.body.trim(), mergeSourcePageId ?? null, actorId]);
+
+  await client.query("DELETE FROM wiki_page_version_sources WHERE page_version_id = $1", [version.rows[0].id]);
+  await client.query("DELETE FROM wiki_page_version_relations WHERE page_version_id = $1", [version.rows[0].id]);
 
   for (const articleVersionId of sourceIds) {
     await client.query(`
@@ -249,8 +262,11 @@ async function insertDraft(
   if (relationSlugs.includes(input.slug)) throw new Error("Wiki 页面不能关联自身。");
   if (relationSlugs.length > 0) {
     const related = await client.query<{ id: string; slug: string }>(`
-      SELECT id, slug FROM wiki_pages
-      WHERE slug = ANY($1::text[]) AND state = 'active' AND del_flag = false
+      SELECT page.id, page.slug FROM wiki_pages page
+      JOIN wiki_page_versions version ON version.id = page.current_published_version_id
+        AND version.page_id = page.id AND version.status = 'published' AND version.del_flag = false
+      WHERE page.slug = ANY($1::text[]) AND page.state = 'active' AND page.del_flag = false
+        AND ${validPublishedSource("version")}
     `, [relationSlugs]);
     if (related.rowCount !== relationSlugs.length) throw new Error("相关 Wiki 页面当前不可用。");
     for (const target of related.rows) {
@@ -358,12 +374,67 @@ export async function persistGeneratedWikiDrafts(
   }
 }
 
+async function synchronizePublishedRelations(
+  client: PoolClient,
+  pageId: string,
+  oldRelatedPageIds: string[],
+  newRelatedPageIds: string[],
+  actorId: string,
+) {
+  for (const relatedPageId of new Set(oldRelatedPageIds)) {
+    const current = await client.query<{ version_id: string }>(`
+      SELECT current_published_version_id AS version_id FROM wiki_pages
+      WHERE id = $1 AND state = 'active' AND del_flag = false
+    `, [relatedPageId]);
+    if (current.rows[0]?.version_id) {
+      await client.query(`
+        DELETE FROM wiki_page_version_relations
+        WHERE page_version_id = $1 AND related_page_id = $2
+      `, [current.rows[0].version_id, pageId]);
+    }
+  }
+  for (const relatedPageId of new Set(newRelatedPageIds)) {
+    const current = await client.query<{ version_id: string }>(`
+      SELECT page.current_published_version_id AS version_id
+      FROM wiki_pages page
+      JOIN wiki_page_versions version ON version.id = page.current_published_version_id
+        AND version.status = 'published' AND version.del_flag = false
+      WHERE page.id = $1 AND page.state = 'active' AND page.del_flag = false
+        AND ${validPublishedSource("version")}
+    `, [relatedPageId]);
+    if (current.rows[0]?.version_id) {
+      await client.query(`
+        INSERT INTO wiki_page_version_relations (page_version_id, related_page_id, created_by, updated_by)
+        VALUES ($1, $2, $3, $3) ON CONFLICT (page_version_id, related_page_id) DO NOTHING
+      `, [current.rows[0].version_id, pageId, actorId]);
+    }
+  }
+}
+
+async function repointPublishedRelations(client: PoolClient, sourcePageId: string, targetPageId: string, actorId: string) {
+  const referrers = await client.query<{ page_version_id: string }>(`
+    SELECT relation.page_version_id
+    FROM wiki_page_version_relations relation
+    JOIN wiki_page_versions version ON version.id = relation.page_version_id AND version.status = 'published'
+    JOIN wiki_pages page ON page.id = version.page_id AND page.current_published_version_id = version.id
+    WHERE relation.related_page_id = $1 AND page.id <> $2
+    FOR UPDATE OF version
+  `, [sourcePageId, targetPageId]);
+  for (const { page_version_id: versionId } of referrers.rows) {
+    await client.query(`DELETE FROM wiki_page_version_relations WHERE page_version_id = $1 AND related_page_id = $2`, [versionId, sourcePageId]);
+    await client.query(`
+      INSERT INTO wiki_page_version_relations (page_version_id, related_page_id, created_by, updated_by)
+      VALUES ($1, $2, $3, $3) ON CONFLICT (page_version_id, related_page_id) DO NOTHING
+    `, [versionId, targetPageId, actorId]);
+  }
+}
+
 export async function publishWikiPageVersion(pageId: string, versionId: string, actorId: string): Promise<void> {
   const client = await database().connect();
   try {
     await client.query("BEGIN");
-    const page = await client.query<{ id: string; state: "active" | "merged" }>(`
-      SELECT id, state FROM wiki_pages WHERE id = $1 AND del_flag = false FOR UPDATE
+    const page = await client.query<{ id: string; state: "active" | "merged"; current_published_version_id: string | null }>(`
+      SELECT id, state, current_published_version_id FROM wiki_pages WHERE id = $1 AND del_flag = false FOR UPDATE
     `, [pageId]);
     if (page.rows[0]?.state !== "active") throw new Error("Wiki 页面不存在或已合并。");
     const version = await client.query<{ id: string; merge_source_page_id: string | null }>(`
@@ -371,6 +442,14 @@ export async function publishWikiPageVersion(pageId: string, versionId: string, 
       WHERE id = $1 AND page_id = $2 AND status = 'draft' AND del_flag = false FOR UPDATE
     `, [versionId, pageId]);
     if (!version.rows[0]) throw new Error("Wiki 草稿不存在或状态已变化。");
+    const previousRelated = page.rows[0].current_published_version_id
+      ? await client.query<{ related_page_id: string }>(`
+        SELECT related_page_id FROM wiki_page_version_relations WHERE page_version_id = $1 AND del_flag = false
+      `, [page.rows[0].current_published_version_id])
+      : { rows: [] as Array<{ related_page_id: string }> };
+    const nextRelated = await client.query<{ related_page_id: string }>(`
+      SELECT related_page_id FROM wiki_page_version_relations WHERE page_version_id = $1 AND del_flag = false
+    `, [versionId]);
     await validateSources(client, (await client.query<{ article_version_id: string }>(`
       SELECT article_version_id FROM wiki_page_version_sources
       WHERE page_version_id = $1 AND del_flag = false
@@ -379,28 +458,40 @@ export async function publishWikiPageVersion(pageId: string, versionId: string, 
       SELECT EXISTS (
         SELECT 1 FROM wiki_page_version_relations relation
         JOIN wiki_pages target ON target.id = relation.related_page_id
+        LEFT JOIN wiki_page_versions target_version ON target_version.id = target.current_published_version_id
+          AND target_version.page_id = target.id AND target_version.status = 'published' AND target_version.del_flag = false
         WHERE relation.page_version_id = $1 AND relation.del_flag = false
-          AND (target.state <> 'active' OR target.del_flag)
+          AND (target.state <> 'active' OR target.del_flag OR target_version.id IS NULL
+            OR NOT ${validPublishedSource("target_version")})
       ) AS invalid
     `, [versionId]);
     if (invalidRelations.rows[0]?.invalid) throw new Error("相关 Wiki 页面当前不可用。");
 
-    await client.query(`
-      UPDATE wiki_page_versions SET status = 'archived', updated_at = now(), updated_by = $2
-      WHERE page_id = $1 AND status = 'published' AND id <> $3
-    `, [pageId, actorId, versionId]);
     await client.query(`
       UPDATE wiki_page_versions SET status = 'published', updated_at = now(), updated_by = $2 WHERE id = $1
     `, [versionId, actorId]);
     await client.query(`
       UPDATE wiki_pages SET current_published_version_id = $2, updated_at = now(), updated_by = $3 WHERE id = $1
     `, [pageId, versionId, actorId]);
+    if (page.rows[0].current_published_version_id && page.rows[0].current_published_version_id !== versionId) {
+      await client.query("DELETE FROM wiki_page_versions WHERE id = $1", [page.rows[0].current_published_version_id]);
+    }
+    await synchronizePublishedRelations(
+      client,
+      pageId,
+      previousRelated.rows.map(({ related_page_id }) => related_page_id),
+      nextRelated.rows.map(({ related_page_id }) => related_page_id),
+      actorId,
+    );
     if (version.rows[0].merge_source_page_id) {
+      const sourcePageId = version.rows[0].merge_source_page_id;
       const source = await client.query(`
         UPDATE wiki_pages SET state = 'merged', redirect_to_page_id = $2, updated_at = now(), updated_by = $3
         WHERE id = $1 AND state = 'active' AND del_flag = false
-      `, [version.rows[0].merge_source_page_id, pageId, actorId]);
+      `, [sourcePageId, pageId, actorId]);
       if (source.rowCount !== 1) throw new Error("待合并 Wiki 页面已不可用。");
+      await repointPublishedRelations(client, sourcePageId, pageId, actorId);
+      await client.query("DELETE FROM wiki_page_versions WHERE page_id = $1", [sourcePageId]);
     }
     await client.query("COMMIT");
   } catch (error) {
@@ -458,7 +549,7 @@ export async function mergeWikiPages(sourceSlug: string, targetSlug: string, act
     const draft = await insertDraft(client, {
       slug: targetSlug,
       title: target.rows[0].title,
-      body: `${target.rows[0].body}\n\n## ${source.rows[0].title}\n\n${source.rows[0].body}`,
+      body: target.rows[0].body,
       sourceArticleVersionIds: sourceIds.rows.map(({ article_version_id }) => article_version_id),
       relatedSlugs: related.rows.map(({ slug }) => slug),
     }, actorId, bySlug.get(sourceSlug));
@@ -488,7 +579,7 @@ export async function getWikiPageHistory(slug: string): Promise<WikiPageVersion[
   const versions = await Promise.all(result.rows.map(async (version) => {
     const [sources, relations] = await Promise.all([
       database().query<WikiPageSource & QueryResultRow>(`
-        SELECT article_version.id AS "articleVersionId", article.slug AS "articleSlug", article_version.title AS "articleTitle"
+        SELECT article_version.id AS "articleVersionId", article.public_id AS "articleSlug", article_version.title AS "articleTitle"
         FROM wiki_page_version_sources source
         JOIN article_versions article_version ON article_version.id = source.article_version_id
         JOIN articles article ON article.id = article_version.article_id

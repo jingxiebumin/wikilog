@@ -12,8 +12,8 @@ vi.mock("@/lib/db", () => ({
 
 import {
   findPublishedArticleFromDatabase,
-  findPublishedArticleVersionFromDatabase,
   listPublishedArticlesFromDatabase,
+  listPublishedArticlePageFromDatabase,
   listTagArticlesFromDatabase,
   searchPublishedArticlesFromDatabase,
 } from "./content-repository";
@@ -48,6 +48,10 @@ describe("PostgreSQL public content repository", () => {
       );
       CREATE TABLE article_version_tags (
         article_version_id uuid NOT NULL REFERENCES article_versions(id), tag_id uuid NOT NULL REFERENCES tags(id),
+        del_flag boolean NOT NULL DEFAULT false
+      );
+      CREATE TABLE favorites (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(), article_id uuid NOT NULL REFERENCES articles(id),
         del_flag boolean NOT NULL DEFAULT false
       );
       INSERT INTO categories (id, slug, name) VALUES ('00000000-0000-0000-0000-000000000001', 'engineering', '工程实践');
@@ -123,7 +127,26 @@ describe("PostgreSQL public content repository", () => {
     await expect(findPublishedArticleFromDatabase("deleted")).resolves.toBeUndefined();
   });
 
-  it("serves a cited archived version only while its article remains publicly visible", async () => {
+  it("pages published articles and filters the page by category", async () => {
+    await database.query("INSERT INTO categories (id, slug, name) VALUES ('00000000-0000-0000-0000-000000000002', 'systems', '系统设计')");
+    await createArticle({ slug: "engineering-new", title: "工程新文", contentText: "正文", publishedAt: "2026-10-03" });
+    await createArticle({ slug: "engineering-old", title: "工程旧文", contentText: "正文", publishedAt: "2026-10-02" });
+    const systemArticle = await database.query<{ id: string }>("INSERT INTO articles (slug, category_id) VALUES ('systems-one', '00000000-0000-0000-0000-000000000002') RETURNING id");
+    await database.query("INSERT INTO article_versions (article_id, version_number, status, title, summary, content, published_at) VALUES ($1, 1, 'published', '系统设计文章', '正文', '[]', '2026-10-04')", [systemArticle.rows[0].id]);
+    await database.query("UPDATE articles SET current_published_version_id = (SELECT id FROM article_versions WHERE article_id = $1) WHERE id = $1", [systemArticle.rows[0].id]);
+
+    const firstPage = await listPublishedArticlePageFromDatabase("all", 2, 0);
+    const secondPage = await listPublishedArticlePageFromDatabase("all", 2, 2);
+    const categoryPage = await listPublishedArticlePageFromDatabase("engineering", 10, 0);
+
+    expect(firstPage.articles.map(({ slug }) => slug)).toEqual(["systems-one", "engineering-new"]);
+    expect(firstPage.totalCount).toBe(3);
+    expect(secondPage.articles.map(({ slug }) => slug)).toEqual(["engineering-old"]);
+    expect(categoryPage.articles.map(({ slug }) => slug)).toEqual(["engineering-new", "engineering-old"]);
+    expect(categoryPage.totalCount).toBe(2);
+  });
+
+  it("serves only the current article body after content changes", async () => {
     const previous = await createArticle({ slug: "version-citation", title: "回答时的版本", contentText: "原文证据" });
     const current = await database.query<{ id: string }>(`
       INSERT INTO article_versions (article_id, version_number, status, title, summary, content_text, content, published_at)
@@ -133,13 +156,10 @@ describe("PostgreSQL public content repository", () => {
     await database.query("UPDATE article_versions SET status = 'archived' WHERE id = $1", [previous.versionId]);
     await database.query("UPDATE articles SET current_published_version_id = $1 WHERE id = $2", [current.rows[0].id, previous.articleId]);
 
-    await expect(findPublishedArticleVersionFromDatabase("version-citation", previous.versionId)).resolves.toMatchObject({
-      title: "回答时的版本",
-      body: [{ type: "paragraph", text: "原文证据" }],
+    await expect(findPublishedArticleFromDatabase("version-citation")).resolves.toMatchObject({
+      title: "当前版本",
+      body: [{ type: "paragraph", text: "更新后的正文" }],
     });
-
-    const hidden = await createArticle({ slug: "hidden-citation", title: "已下架", contentText: "隐藏正文", archived: true });
-    await expect(findPublishedArticleVersionFromDatabase("hidden-citation", hidden.versionId)).resolves.toBeUndefined();
   });
 
   it("keeps search title priority, case-insensitive matching, and nearby body snippets", async () => {

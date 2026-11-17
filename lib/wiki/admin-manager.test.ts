@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { AdminWikiManager } from "@/components/admin-wiki-manager";
 
 describe("AdminWikiManager", () => {
-  it("shows draft editing, source selection, version review, and merge controls", () => {
+  it("shows the current publication state, draft preview, and merge controls without history or AI generation", () => {
     const markup = renderToStaticMarkup(createElement(AdminWikiManager, {
       initialPages: [{
         id: "page-id",
@@ -19,14 +19,13 @@ describe("AdminWikiManager", () => {
         }],
       }],
       publishedArticles: [{ id: "source-id", slug: "transactions", title: "事务处理", versionNumber: 1 }],
-      generationEnabled: false,
     }));
 
     expect(markup).toContain("创建 Wiki 页面");
-    expect(markup).toContain("事务处理 · v1");
-    expect(markup).toContain("发布此版本");
-    expect(markup).toContain("合并主题");
-    expect(markup).toContain("页面版本");
-    expect(markup).toContain("AI 生成未启用");
+    expect(markup).toContain("数据库事务");
+    expect(markup).toContain("预览待发布草稿");
+    expect(markup).toContain("合并页面");
+    expect(markup).not.toContain("页面版本历史");
+    expect(markup).not.toContain("AI 生成");
   });
 });

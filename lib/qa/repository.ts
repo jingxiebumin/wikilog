@@ -43,7 +43,7 @@ function searchTerms(query: string): string[] {
 function sourceSearchQuery(onlyIds: boolean) {
   return `
     SELECT v.id AS "articleVersionId", a.slug, v.title,
-      '/articles/' || a.slug || '?version=' || v.id AS url,
+      '/articles/' || a.slug AS url,
       substring(v.content_text FROM greatest(position(lower(matched_source.term) IN lower(v.content_text)) - 400, 1) FOR ${MAX_ARTICLE_CONTEXT_CHARACTERS}) AS "contentText"
     FROM articles a
     JOIN article_versions v ON v.id = a.current_published_version_id AND v.article_id = a.id

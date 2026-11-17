@@ -1,19 +1,16 @@
-import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, BookOpenText, Clock3, MoveDownRight } from "lucide-react";
-import { ArticleCard } from "@/components/article-card";
-import { listCategories, listPublishedArticles, listTags } from "@/lib/public-content";
+import { ArrowUpRight, BookOpenText } from "lucide-react";
+import { PublicArticleList } from "@/components/public-article-list";
+import { listCategories, listPublishedArticlePage, listTags } from "@/lib/public-content";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [articles, categories, tags] = await Promise.all([
-    listPublishedArticles(),
+  const [page, categories, tags] = await Promise.all([
+    listPublishedArticlePage("all", 10, 0),
     listCategories(),
     listTags(),
   ]);
-  const [featured, ...moreArticles] = articles;
-  const featuredCategory = categories.find((category) => category.slug === featured?.category);
 
   return (
     <div className="page home-page">
@@ -28,40 +25,10 @@ export default async function HomePage() {
       <div className="home-layout">
         <section className="home-main" aria-labelledby="latest-heading">
           <div className="section-heading">
-            <div>
-              <p className="section-index">01 / 最近更新</p>
-              <h2 id="latest-heading">最新文章</h2>
-            </div>
-            <span className="result-count">{String(articles.length).padStart(2, "0")} 篇</span>
+            <div><p className="section-index">01 / 文章</p><h2 id="latest-heading">全部文章</h2></div>
+            <span className="result-count">{String(page.totalCount).padStart(2, "0")} 篇</span>
           </div>
-
-          {featured && (
-            <article className="featured-article">
-              <Link aria-label={`阅读：${featured.title}`} className="featured-cover-link" href={`/articles/${featured.slug}`}>
-                <Image alt="" className={`featured-cover cover-${featured.cover}`} height={450} priority src={`/covers/${featured.cover}.svg`} width={780} />
-                <span className="featured-index">LATEST NOTE <span>№ 0{articles.length}</span></span>
-                <MoveDownRight aria-hidden="true" className="featured-mark" size={24} strokeWidth={1.5} />
-              </Link>
-              <div className="featured-copy">
-                <div className="article-card-meta">
-                  <span className={`category-label tone-${featuredCategory?.tone ?? "blue"}`}>{featuredCategory?.name ?? "未分类"}</span>
-                  <time dateTime={featured.publishedAt}>{featured.publishedAt.replaceAll("-", ".")}</time>
-                </div>
-                <h3><Link href={`/articles/${featured.slug}`}>{featured.title}</Link></h3>
-                <p>{featured.summary}</p>
-                <div className="featured-bottom">
-                  <span><Clock3 aria-hidden="true" size={14} /> {featured.readMinutes} 分钟阅读</span>
-                  <Link href={`/articles/${featured.slug}`}>阅读全文 <ArrowRight aria-hidden="true" size={15} /></Link>
-                </div>
-              </div>
-            </article>
-          )}
-
-          {featured ? (
-            <div className="article-grid">
-              {moreArticles.map((article) => <ArticleCard article={article} key={article.slug} />)}
-            </div>
-          ) : (
+          {page.totalCount ? <PublicArticleList initialPage={{ ...page, hasMore: page.articles.length < page.totalCount }} categories={categories} tags={tags} /> : (
             <div className="home-empty-state">
               <span className="home-empty-icon"><BookOpenText aria-hidden="true" size={19} strokeWidth={1.7} /></span>
               <div>
@@ -81,12 +48,10 @@ export default async function HomePage() {
             <h2 id="topics-heading">从这里开始</h2>
             <div className="topic-list">
               {categories.map((category, index) => {
-                const count = articles.filter((article) => article.category === category.slug).length;
                 return (
                   <Link className="topic-row" href={`/categories/${category.slug}`} key={category.slug}>
                     <span className={`topic-number tone-${category.tone}`}>{String(index + 1).padStart(2, "0")}</span>
                     <span className="topic-name">{category.name}</span>
-                    <span className="topic-count">{count}</span>
                     <ArrowUpRight aria-hidden="true" className="topic-arrow" size={15} />
                   </Link>
                 );
@@ -101,7 +66,7 @@ export default async function HomePage() {
             </div>
             <h2 id="tags-heading">最近在写</h2>
             <div className="tag-list">
-              {tags.filter((tag) => articles.some((article) => article.tags.includes(tag.slug))).slice(0, 7).map((tag) => (
+              {tags.slice(0, 7).map((tag) => (
                 <Link href={`/tags/${tag.slug}`} key={tag.slug}>#{tag.name}</Link>
               ))}
             </div>

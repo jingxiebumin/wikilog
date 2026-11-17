@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ArticleSourceError, parseArticleSource } from "./parser";
+import { ArticleSourceError, parseArticleForm, parseArticleSource } from "./parser";
 
 const validSource = [
   "---",
@@ -75,5 +75,22 @@ describe("parseArticleSource", () => {
   it("rejects unknown frontmatter fields", () => {
     expect(() => parseArticleSource(validSource.replace("title:", "draft: true\ntitle:"), ["engineering"]))
       .toThrow("不支持 frontmatter 字段");
+  });
+});
+
+describe("parseArticleForm", () => {
+  it("keeps metadata outside Markdown and derives a plain summary from the first paragraph", () => {
+    expect(parseArticleForm("## ignored heading\n\n**First** `paragraph` text.\n\n![photo](https://example.test/a.png)\n\n```ts\ncode\n```", {
+      title: "  Form title  ", category: "engineering", publishedAt: "2026-11-17", tags: ["release"],
+    }, ["engineering"])).toMatchObject({
+      slug: "", title: "Form title", summary: "First paragraph text.", tags: ["release"],
+      content: [{ type: "heading" }, { type: "paragraph", text: "**First** `paragraph` text." }, { type: "image" }, { type: "code" }],
+    });
+  });
+
+  it("rejects more than two tags and unknown controlled options", () => {
+    const metadata = { title: "Title", category: "engineering", publishedAt: "2026-11-17", tags: ["one", "two", "three"] };
+    expect(() => parseArticleForm("Body", metadata, ["engineering"])).toThrow("最多选择两个");
+    expect(() => parseArticleForm("Body", { ...metadata, tags: [], category: "other" }, ["engineering"])).toThrow("受控分类");
   });
 });

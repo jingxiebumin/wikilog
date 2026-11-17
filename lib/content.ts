@@ -24,6 +24,7 @@ export type Article = {
   readMinutes: number;
   cover: "boundary" | "search" | "content" | "budget" | "database";
   body: ArticleBlock[];
+  favoriteCount?: number;
 };
 
 export type SearchResult = {

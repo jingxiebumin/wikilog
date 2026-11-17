@@ -22,7 +22,6 @@ import {
   mergeWikiPages,
   publishWikiPageVersion,
   saveWikiPageDraft,
-  saveWikiPageDraftsBatch,
 } from "./repository";
 
 describe("Wiki repository", () => {
@@ -39,6 +38,7 @@ describe("Wiki repository", () => {
       "0004_article_sources.sql", "0005_favorites.sql", "0006_reader_status_audit.sql",
       "0007_reader_profile_audit.sql", "0008_personal_center.sql", "0009_article_images.sql",
       "0010_qa.sql", "0011_wiki.sql", "0012_wiki_generation.sql",
+      "0014_current_article_management.sql", "0015_wiki_single_draft.sql",
     ]) {
       await database.exec(await readFile(path.join(process.cwd(), "db/migrations", file), "utf8"));
     }
@@ -61,8 +61,8 @@ describe("Wiki repository", () => {
 
   async function createPublishedArticle(slug: string, title: string, categoryId: string) {
     const article = await database.query<{ id: string }>(`
-      INSERT INTO articles (slug, category_id) VALUES ($1, $2) RETURNING id
-    `, [slug, categoryId]);
+      INSERT INTO articles (slug, public_id, category_id) VALUES ($1, $3, $2) RETURNING id
+    `, [slug, categoryId, slug === "transactions" ? "7699320318288494630" : "7699320318288494631"]);
     const version = await database.query<{ id: string }>(`
       INSERT INTO article_versions (article_id, version_number, status, title, summary, content_text, cover, read_minutes, published_at)
       VALUES ($1, 1, 'published', $2, '摘要', '正文证据', 'content', 1, CURRENT_DATE) RETURNING id
@@ -88,26 +88,31 @@ describe("Wiki repository", () => {
       slug: "database-transactions",
       title: "数据库事务",
       body: "事务保证一组变更的原子性。",
-      sources: [{ articleVersionId: sourceArticleVersionId, articleSlug: "transactions" }],
+      sources: [{ articleVersionId: sourceArticleVersionId, articleSlug: "7699320318288494630" }],
     });
   });
 
-  it("preserves published history when a revised version is approved", async () => {
+  it("overwrites the single draft and does not retain old Wiki正文 versions", async () => {
     const first = await saveWikiPageDraft({
       slug: "database-transactions", title: "事务", body: "第一版。",
       sourceArticleVersionIds: [sourceArticleVersionId], relatedSlugs: [],
     }, adminId);
-    await publishWikiPageVersion(first.pageId, first.versionId, adminId);
     const second = await saveWikiPageDraft({
       slug: "database-transactions", title: "数据库事务", body: "第二版。",
       sourceArticleVersionIds: [sourceArticleVersionId], relatedSlugs: [],
     }, adminId);
+    expect(second).toMatchObject({ pageId: first.pageId, versionId: first.versionId });
+    expect((await database.query("SELECT id FROM wiki_page_versions WHERE page_id = $1", [first.pageId])).rowCount).toBe(1);
     await publishWikiPageVersion(second.pageId, second.versionId, adminId);
+    const revised = await saveWikiPageDraft({
+      slug: "database-transactions", title: "数据库事务（修订）", body: "第三版。",
+      sourceArticleVersionIds: [sourceArticleVersionId], relatedSlugs: [],
+    }, adminId);
+    await publishWikiPageVersion(revised.pageId, revised.versionId, adminId);
 
-    await expect(getWikiPageHistory("database-transactions")).resolves.toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: first.versionId, status: "archived", body: "第一版。" }),
-      expect.objectContaining({ id: second.versionId, status: "published", body: "第二版。" }),
-    ]));
+    await expect(getWikiPageHistory("database-transactions")).resolves.toEqual([
+      expect.objectContaining({ id: revised.versionId, status: "published", body: "第三版。" }),
+    ]);
   });
 
   it("rejects sources that are not the current published article version", async () => {
@@ -146,6 +151,9 @@ describe("Wiki repository", () => {
     await expect(findPublishedWikiPage("database-transactions")).resolves.toMatchObject({
       relatedPages: [{ slug: "database-indexes", title: "数据库索引" }],
     });
+    await expect(findPublishedWikiPage("database-indexes")).resolves.toMatchObject({
+      relatedPages: [{ slug: "database-transactions", title: "数据库事务" }],
+    });
   });
 
   it("hides a published page when all of its article-version sources are no longer current", async () => {
@@ -171,47 +179,57 @@ describe("Wiki repository", () => {
       sourceArticleVersionIds: [secondArticleVersionId], relatedSlugs: [],
     }, adminId);
     await publishWikiPageVersion(second.pageId, second.versionId, adminId);
+    const referrer = await saveWikiPageDraft({
+      slug: "transaction-locking", title: "事务锁", body: "锁定正文。",
+      sourceArticleVersionIds: [secondArticleVersionId], relatedSlugs: ["transaction-isolation"],
+    }, adminId);
+    await publishWikiPageVersion(referrer.pageId, referrer.versionId, adminId);
 
     const merge = await mergeWikiPages("transaction-isolation", "database-transactions", adminId);
+    await expect(database.query<{ body: string }>("SELECT body FROM wiki_page_versions WHERE id = $1", [merge.versionId]))
+      .resolves.toMatchObject({ rows: [{ body: "事务正文。" }] });
     await expect(findPublishedWikiPage("transaction-isolation")).resolves.toMatchObject({
       body: "隔离级别正文。",
     });
     expect(merge.versionId).toBeTruthy();
-    await publishWikiPageVersion(merge.pageId, merge.versionId, adminId);
+    const editedMerge = await saveWikiPageDraft({
+      slug: "database-transactions", title: "数据库事务整理版", body: "管理员整理后的合并正文。",
+      sourceArticleVersionIds: [sourceArticleVersionId, secondArticleVersionId], relatedSlugs: [],
+    }, adminId);
+    expect(editedMerge.versionId).toBe(merge.versionId);
+    await publishWikiPageVersion(editedMerge.pageId, editedMerge.versionId, adminId);
 
     await expect(findPublishedWikiPage("transaction-isolation")).resolves.toMatchObject({
       redirectTo: "/wiki/database-transactions",
     });
     await expect(findPublishedWikiPage("database-transactions")).resolves.toMatchObject({
+      title: "数据库事务整理版",
+      body: "管理员整理后的合并正文。",
       sources: expect.arrayContaining([
         expect.objectContaining({ articleVersionId: sourceArticleVersionId }),
         expect.objectContaining({ articleVersionId: secondArticleVersionId }),
       ]),
     });
-    await expect(getWikiPageHistory("transaction-isolation")).resolves.toEqual([
-      expect.objectContaining({ id: second.versionId, status: "published", body: "隔离级别正文。" }),
-    ]);
+    await expect(findPublishedWikiPage("transaction-locking")).resolves.toMatchObject({
+      relatedPages: [{ slug: "database-transactions", title: "数据库事务整理版" }],
+    });
+    const source = await database.query<{ id: string }>(`
+      SELECT version.id FROM wiki_page_versions version JOIN wiki_pages page ON page.id = version.page_id
+      WHERE page.slug = 'transaction-isolation'
+    `);
+    expect(source.rows).toEqual([]);
+    await expect(getWikiPageHistory("transaction-isolation")).resolves.toEqual([]);
   });
 
-  it("keeps candidate relationships private until both pages are individually published", async () => {
-    const drafts = await saveWikiPageDraftsBatch([
-      {
-        slug: "database-transactions", title: "数据库事务", body: "事务正文。",
-        sourceArticleVersionIds: [sourceArticleVersionId], relatedSlugs: ["database-indexes"],
-      },
-      {
-        slug: "database-indexes", title: "数据库索引", body: "索引正文。",
-        sourceArticleVersionIds: [secondArticleVersionId], relatedSlugs: [],
-      },
-    ], adminId);
-
-    await publishWikiPageVersion(drafts[0].pageId, drafts[0].versionId, adminId);
-    await expect(findPublishedWikiPage("database-transactions")).resolves.toMatchObject({ relatedPages: [] });
-
-    await publishWikiPageVersion(drafts[1].pageId, drafts[1].versionId, adminId);
-    await expect(findPublishedWikiPage("database-transactions")).resolves.toMatchObject({
-      relatedPages: [{ slug: "database-indexes", title: "数据库索引" }],
-    });
+  it("requires related pages to be publicly available when a draft is saved", async () => {
+    await saveWikiPageDraft({
+      slug: "database-indexes", title: "数据库索引", body: "索引正文。",
+      sourceArticleVersionIds: [secondArticleVersionId], relatedSlugs: [],
+    }, adminId);
+    await expect(saveWikiPageDraft({
+      slug: "database-transactions", title: "数据库事务", body: "事务正文。",
+      sourceArticleVersionIds: [sourceArticleVersionId], relatedSlugs: ["database-indexes"],
+    }, adminId)).rejects.toThrow("相关 Wiki 页面当前不可用。");
   });
 
   it("rejects candidate relationships to unknown or merged pages", async () => {

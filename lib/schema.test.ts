@@ -141,4 +141,51 @@ describe("initial PostgreSQL schema", () => {
     const source = await database.query<{ source_mdx: string }>("SELECT source_mdx FROM article_versions WHERE id = $1", [version.rows[0].id]);
     expect(source.rows[0].source_mdx).toBe("");
   });
+
+  it("migrates existing article routes to numeric string ids without changing internal article keys", async () => {
+    const category = await database.query<{ id: string }>("INSERT INTO categories (slug, name) VALUES ('legacy', 'Legacy') RETURNING id");
+    const article = await database.query<{ id: string }>("INSERT INTO articles (slug, category_id) VALUES ('old-route', $1) RETURNING id", [category.rows[0].id]);
+    await database.exec(await readFile(path.join(process.cwd(), "db/migrations/0002_audit_fields.sql"), "utf8"));
+    await database.exec(await readFile(path.join(process.cwd(), "db/migrations/0004_article_sources.sql"), "utf8"));
+    await database.exec(await readFile(path.join(process.cwd(), "db/migrations/0010_qa.sql"), "utf8"));
+    await database.exec(await readFile(path.join(process.cwd(), "db/migrations/0014_current_article_management.sql"), "utf8"));
+    const migrated = await database.query<{ id: string; slug: string; public_id: string }>("SELECT id, slug, public_id FROM articles");
+    expect(migrated.rows[0].id).toBe(article.rows[0].id);
+    expect(migrated.rows[0].slug).toMatch(/^\d+$/);
+    expect(migrated.rows[0].public_id).toBe(migrated.rows[0].slug);
+    const next = await database.query<{ id: string }>("INSERT INTO articles (slug, category_id) VALUES ('new-route', $1) RETURNING public_id AS id", [category.rows[0].id]);
+    expect(next.rows[0].id).toMatch(/^\d+$/);
+    expect(next.rows[0].id).not.toBe(migrated.rows[0].public_id);
+  });
+
+  it("removes archived article bodies while preserving citation references during migration", async () => {
+    const category = await database.query<{ id: string }>("INSERT INTO categories (slug, name) VALUES ('history', 'History') RETURNING id");
+    const article = await database.query<{ id: string }>("INSERT INTO articles (slug, category_id) VALUES ('history', $1) RETURNING id", [category.rows[0].id]);
+    await database.exec(await readFile(path.join(process.cwd(), "db/migrations/0002_audit_fields.sql"), "utf8"));
+    await database.exec(await readFile(path.join(process.cwd(), "db/migrations/0004_article_sources.sql"), "utf8"));
+    await database.exec(await readFile(path.join(process.cwd(), "db/migrations/0010_qa.sql"), "utf8"));
+    const versions = await database.query<{ id: string; version_number: number }>(`
+      INSERT INTO article_versions (article_id, version_number, status, title, summary, content, content_text, cover, read_minutes, published_at, source_mdx)
+      VALUES
+        ($1, 1, 'published', 'Current', 'Current summary', '[{"type":"paragraph","text":"Current body"}]', 'Current body', 'content', 1, CURRENT_DATE, 'Current source'),
+        ($1, 2, 'archived', 'Old', 'Old summary', '[{"type":"paragraph","text":"Old body"}]', 'Old body', 'content', 1, CURRENT_DATE, 'Old source')
+      RETURNING id, version_number
+    `, [article.rows[0].id]);
+    const currentId = versions.rows.find(({ version_number }) => version_number === 1)!.id;
+    const archivedId = versions.rows.find(({ version_number }) => version_number === 2)!.id;
+    await database.query("UPDATE articles SET current_published_version_id = $2 WHERE id = $1", [article.rows[0].id, currentId]);
+    const admin = await database.query<{ id: string }>("INSERT INTO users (email, display_name, role, status) VALUES ('admin@example.test', 'Admin', 'admin', 'active') RETURNING id");
+    const session = await database.query<{ id: string }>("INSERT INTO qa_sessions (admin_id) VALUES ($1) RETURNING id", [admin.rows[0].id]);
+    const message = await database.query<{ id: string }>("INSERT INTO qa_messages (session_id, admin_id, quota_day, submission_sequence, question, status) VALUES ($1, $2, CURRENT_DATE, 1, 'Question', 'succeeded') RETURNING id", [session.rows[0].id, admin.rows[0].id]);
+    await database.query("INSERT INTO qa_citations (message_id, article_version_id, slug, title, url, quote) VALUES ($1, $2, 'history', 'Old', '/articles/history?version=old-id', 'Old body')", [message.rows[0].id, archivedId]);
+
+    await database.exec(await readFile(path.join(process.cwd(), "db/migrations/0014_current_article_management.sql"), "utf8"));
+
+    await expect(database.query<{ content: unknown; content_text: string; source_mdx: string }>(
+      "SELECT content, content_text, source_mdx FROM article_versions WHERE id = $1", [archivedId],
+    )).resolves.toMatchObject({ rows: [{ content: [], content_text: "", source_mdx: "" }] });
+    await expect(database.query<{ article_version_id: string; url: string; quote: string }>(
+      "SELECT article_version_id, url, quote FROM qa_citations WHERE message_id = $1", [message.rows[0].id],
+    )).resolves.toMatchObject({ rows: [{ article_version_id: archivedId, url: expect.stringMatching(/^\/articles\/\d+$/), quote: "Old body" }] });
+  });
 });

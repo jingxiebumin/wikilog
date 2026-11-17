@@ -30,7 +30,7 @@ export function WikiTopicContent({ page }: { page: PublishedWikiPage }) {
           <ul className={styles.topicLinks}>
             {page.sources.map((source) => (
               <li key={source.articleVersionId}>
-                <Link href={`/articles/${source.articleSlug}?version=${encodeURIComponent(source.articleVersionId)}`}>
+                <Link href={`/articles/${source.articleSlug}`}>
                   {source.articleTitle}<ArrowUpRight aria-hidden="true" size={14} />
                 </Link>
               </li>

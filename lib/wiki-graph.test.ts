@@ -43,12 +43,12 @@ describe("Wiki public rendering", () => {
     expect(renderToStaticMarkup(createElement(WikiGraph, { pages: [] }))).toContain("暂时没有已发布的 Wiki 主题。");
   });
 
-  it("links a topic to its reviewed page and exact published article versions", () => {
+  it("links a topic to its reviewed page and current source articles", () => {
     const markup = renderToStaticMarkup(createElement(WikiTopicContent, { page }));
 
     expect(markup).toContain("事务保证一组变更的原子性。");
     expect(markup).toContain('href="/wiki/database-indexes"');
-    expect(markup).toContain('href="/articles/transactions?version=article-v1"');
+    expect(markup).toContain('href="/articles/transactions"');
     expect(markup).toContain("事务处理");
   });
 });

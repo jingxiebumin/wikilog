@@ -14,11 +14,11 @@ import { hasDatabase } from "@/lib/db";
 import {
   findCategoryFromDatabase,
   findPublishedArticleFromDatabase,
-  findPublishedArticleVersionFromDatabase,
   findTagFromDatabase,
   listCategoriesFromDatabase,
   listCategoryArticlesFromDatabase,
   listPublishedArticlesFromDatabase,
+  listPublishedArticlePageFromDatabase,
   listTagArticlesFromDatabase,
   listTagsFromDatabase,
   searchPublishedArticlesFromDatabase,
@@ -47,12 +47,17 @@ export async function listPublishedArticles() {
   return hasDatabase ? listPublishedArticlesFromDatabase() : publishedArticles();
 }
 
-export async function getPublishedArticle(slug: string) {
-  return hasDatabase ? findPublishedArticleFromDatabase(slug) : findPublishedArticle(slug);
+export async function listPublishedArticlePage(category: string, limit = 10, offset = 0) {
+  if (hasDatabase) return listPublishedArticlePageFromDatabase(category, limit, offset);
+  const allArticles = publishedArticles();
+  const filtered = category === "all" ? allArticles : allArticles.filter((article) => article.category === category);
+  const safeLimit = Math.max(1, Math.min(Math.floor(limit) || 10, 50));
+  const safeOffset = Math.max(0, Math.floor(offset) || 0);
+  return { articles: filtered.slice(safeOffset, safeOffset + safeLimit), totalCount: filtered.length };
 }
 
-export async function getPublishedArticleVersion(slug: string, versionId: string) {
-  return hasDatabase ? findPublishedArticleVersionFromDatabase(slug, versionId) : undefined;
+export async function getPublishedArticle(slug: string) {
+  return hasDatabase ? findPublishedArticleFromDatabase(slug) : findPublishedArticle(slug);
 }
 
 export async function listArticlesForCategory(slug: string) {

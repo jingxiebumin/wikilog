@@ -1,0 +1,21 @@
+.manager { display: flex; min-width: 0; flex-direction: column; gap: 14px; }
+.toolbar, .pagination { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; }
+.toolbar.account-form, .pagination.account-form { max-width: none; flex-direction: row; }
+.toolbar button, .pagination button { align-self: flex-end; }
+.toolbar button:disabled, .pagination button:disabled { cursor: wait; opacity: .55; }
+.tableWrap { width: 100%; overflow-x: auto; border: 1px solid var(--line); background: var(--surface); }
+.table { width: 100%; min-width: 780px; border-collapse: collapse; text-align: left; font-size: 12px; }
+.table th { padding: 10px 12px; color: var(--muted); background: var(--surface-soft); font-weight: 600; white-space: nowrap; }
+.table td { padding: 11px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+.table td strong, .table td small { display: block; }
+.table td small { max-width: 300px; margin-top: 3px; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+.rowActions { display: flex; gap: 8px; white-space: nowrap; }
+.rowActions a, .rowActions button { padding: 0; color: var(--green); background: transparent; border: 0; cursor: pointer; font: inherit; }
+.rowActions button:disabled { opacity: .5; }
+.pagination { justify-content: flex-end; align-items: center; color: var(--muted); font-size: 11px; }
+.dialogHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.dialogHeader h2 { margin: 0; font-size: 18px; }
+.tagOptions { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; padding: 10px 0; border: 0; }
+.tagOptions legend { margin-bottom: 6px; color: var(--ink-soft); font-size: 12px; }
+.tagOptions label { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
+@media (max-width: 600px) { .toolbar.account-form { align-items: stretch; flex-direction: column; } .toolbar button { align-self: stretch; } }

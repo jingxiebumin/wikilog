@@ -15,6 +15,7 @@ type ArticleRow = QueryResultRow & {
   read_minutes: number;
   cover: Article["cover"];
   content: Article["body"];
+  favorite_count: number;
 };
 
 const articleSelect = (versionJoin: string, versionFilter: string) => `
@@ -29,7 +30,8 @@ const articleSelect = (versionJoin: string, versionFilter: string) => `
     COALESCE(array_agg(DISTINCT t.slug) FILTER (WHERE t.slug IS NOT NULL), ARRAY[]::text[]) AS tags,
     v.read_minutes,
     v.cover,
-    v.content
+    v.content,
+    COUNT(DISTINCT f.id) FILTER (WHERE f.del_flag = false) AS favorite_count
   FROM articles a
   JOIN article_versions v
     ON ${versionJoin}
@@ -39,6 +41,7 @@ const articleSelect = (versionJoin: string, versionFilter: string) => `
     ON avt.article_version_id = v.id
     AND avt.del_flag = false
   LEFT JOIN tags t ON t.id = avt.tag_id AND t.del_flag = false
+  LEFT JOIN favorites f ON f.article_id = a.id
   WHERE ${versionFilter}
     AND a.del_flag = false
     AND a.archived_at IS NULL
@@ -67,6 +70,7 @@ const mapArticle = (row: ArticleRow): Article => ({
   readMinutes: row.read_minutes,
   cover: row.cover,
   body: row.content,
+  favoriteCount: row.favorite_count ?? 0,
 });
 
 const getPool = () => {
@@ -134,21 +138,41 @@ export async function listPublishedArticlesFromDatabase(): Promise<Article[]> {
   return result.rows.map(mapArticle);
 }
 
+export async function listPublishedArticlePageFromDatabase(
+  categorySlug: string,
+  requestedLimit = 10,
+  requestedOffset = 0,
+): Promise<{ articles: Article[]; totalCount: number }> {
+  const limit = Math.max(1, Math.min(Math.floor(requestedLimit) || 10, 50));
+  const offset = Math.max(0, Math.floor(requestedOffset) || 0);
+  const byCategory = categorySlug !== "all";
+  const filter = byCategory ? " AND c.slug = $1" : "";
+  const params = byCategory ? [categorySlug] : [];
+  const limitPosition = params.length + 1;
+  const offsetPosition = params.length + 2;
+  const [page, count] = await Promise.all([
+    getPool().query<ArticleRow>(
+      publishedArticleSelect + filter + `\n${groupByArticle.replace("ORDER BY v.published_at DESC, v.created_at DESC", `ORDER BY v.published_at DESC, v.created_at DESC LIMIT $${limitPosition} OFFSET $${offsetPosition}`)}`,
+      [...params, limit, offset],
+    ),
+    getPool().query<{ total_count: number }>(`
+      SELECT COUNT(*)::int AS total_count
+      FROM articles a
+      JOIN article_versions v ON v.id = a.current_published_version_id
+        AND v.article_id = a.id AND v.status = 'published' AND v.del_flag = false
+      JOIN categories c ON c.id = a.category_id AND c.del_flag = false
+      WHERE a.del_flag = false AND a.archived_at IS NULL AND a.deleted_at IS NULL${filter}
+    `, params),
+  ]);
+  return { articles: page.rows.map(mapArticle), totalCount: count.rows[0]?.total_count ?? 0 };
+}
+
 export async function findPublishedArticleFromDatabase(slug: string): Promise<Article | undefined> {
   const result = await getPool().query<ArticleRow>(
     publishedArticleSelect + " AND a.slug = $1\n" + groupByArticle,
     [slug],
   );
   return result.rows[0] ? mapArticle(result.rows[0]) : undefined;
-}
-
-export async function findPublishedArticleVersionFromDatabase(slug: string, versionId: string): Promise<Article | undefined> {
-  const result = await getPool().query<ArticleRow>(
-    articleSelect("v.article_id = a.id", "v.id = $2 AND v.status IN ('published', 'archived')")
-      + " AND a.slug = $1\n" + groupByArticle,
-    [slug, versionId],
-  );
-  return result.rows[0] ? { ...mapArticle(result.rows[0]), status: "published" } : undefined;
 }
 
 export async function listCategoryArticlesFromDatabase(categorySlug: string): Promise<Article[]> {

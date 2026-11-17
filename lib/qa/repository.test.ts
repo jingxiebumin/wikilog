@@ -128,7 +128,7 @@ describe("Q&A repository", () => {
       answer: "answer",
       inputTokens: 2,
       outputTokens: 3,
-      citations: [{ articleVersionId, slug: "article", title: "Article", url: `/articles/article?version=${articleVersionId}`, quote: "数据库事务保证状态变更的一致性。" }],
+      citations: [{ articleVersionId, slug: "article", title: "Article", url: "/articles/article", quote: "数据库事务保证状态变更的一致性。" }],
     });
     await qaRepository.deleteSession(adminId, sessionId);
 
