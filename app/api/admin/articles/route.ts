@@ -3,6 +3,7 @@ import { requireSession } from "@/lib/auth/service";
 import { AuthError } from "@/lib/auth/errors";
 import { adminCurrentArticleList, adminSaveCurrentArticle } from "@/lib/articles/service";
 import { adminErrorResponse } from "@/lib/auth/route-utils";
+import { requestMeta } from "@/lib/auth/http";
 
 export async function GET(request: Request) {
   try {
@@ -34,10 +35,19 @@ export async function POST(request: Request) {
     const articleId = await adminSaveCurrentArticle(actor, {
       id, title: String(form.get("title") ?? ""), summary: String(form.get("summary") ?? ""),
       category: String(form.get("category") ?? ""), tags, publishedAt: String(form.get("publishedAt") ?? ""),
-      source: file instanceof File && file.size ? await file.text() : undefined, sourceFilename: file instanceof File && file.size ? file.name : undefined,
+      source: file instanceof File && file.size ? await decodeMarkdown(file) : undefined, sourceFilename: file instanceof File && file.size ? file.name : undefined,
+      meta: requestMeta(request),
     });
     return NextResponse.json({ id: articleId }, { status: id ? 200 : 201 });
   } catch (error) {
     return adminErrorResponse(error);
+  }
+}
+
+async function decodeMarkdown(file: File): Promise<string> {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer());
+  } catch {
+    throw new AuthError("INVALID_INPUT", "Markdown 文件必须使用有效的 UTF-8 编码。");
   }
 }

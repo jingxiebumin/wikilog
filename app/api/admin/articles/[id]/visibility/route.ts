@@ -3,6 +3,7 @@ import { requireSession } from "@/lib/auth/service";
 import { AuthError } from "@/lib/auth/errors";
 import { adminChangeArticleVisibility } from "@/lib/articles/service";
 import { adminErrorResponse } from "@/lib/auth/route-utils";
+import { requestMeta } from "@/lib/auth/http";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -12,7 +13,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       throw new AuthError("INVALID_INPUT", "无效的文章操作。");
     }
     const { id } = await context.params;
-    await adminChangeArticleVisibility(actor, id, body.action);
+    await adminChangeArticleVisibility(actor, id, body.action, requestMeta(request));
     return NextResponse.json({ ok: true });
   } catch (error) {
     return adminErrorResponse(error);

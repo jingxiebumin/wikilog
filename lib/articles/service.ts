@@ -4,6 +4,8 @@ import { AuthError } from "@/lib/auth/errors";
 import { ArticleSourceError, parseArticleForm } from "./parser";
 import { findArticleImageAccess } from "./repository";
 import { findCurrentArticle, getArticleCategories, getArticleFormOptions, listAdminArticles, listCurrentArticles, saveCurrentArticle, setArticleVisibility, type ArticleListOptions } from "./repository";
+import { enforceAdminManageRateLimit } from "@/lib/auth/admin-manage-rate-limit";
+import type { RequestMeta } from "@/lib/auth/types";
 
 const requireAdmin = (actor: Session) => {
   if (actor.role !== "admin" || actor.status !== "active") throw new AuthError("FORBIDDEN", "没有访问权限。");
@@ -31,9 +33,10 @@ export async function adminCurrentArticle(actor: Session, id: string) {
 
 export async function adminSaveCurrentArticle(actor: Session, input: {
   id?: string; title: string; summary?: string; category: string; tags?: string[]; publishedAt: string;
-  source?: string; sourceFilename?: string;
+  source?: string; sourceFilename?: string; meta?: RequestMeta;
 }) {
   requireAdmin(actor);
+  await enforceAdminManageRateLimit(`article:${input.id ?? "create"}`, input.meta?.ip ?? "unknown");
   if (input.id && input.source === undefined) {
     const existing = await findCurrentArticle(input.id);
     if (!existing) throw new AuthError("NOT_FOUND", "文章不存在。");
@@ -55,7 +58,8 @@ export async function canReadArticleImage(storageKey: string, isAdmin: boolean):
   return Boolean(access && (access.published || isAdmin));
 }
 
-export async function adminChangeArticleVisibility(actor: Session, slug: string, action: "hide" | "delete" | "restore") {
+export async function adminChangeArticleVisibility(actor: Session, slug: string, action: "hide" | "delete" | "restore", meta?: RequestMeta) {
   requireAdmin(actor);
+  await enforceAdminManageRateLimit(`article:${slug}`, meta?.ip ?? "unknown");
   await setArticleVisibility(slug, action, actor.id);
 }

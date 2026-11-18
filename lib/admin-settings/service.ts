@@ -3,6 +3,8 @@ import type { Session } from "@/lib/auth/types";
 import { AuthError } from "@/lib/auth/errors";
 import * as repository from "./repository";
 import type { TaxonomyType } from "./repository";
+import { enforceAdminManageRateLimit } from "@/lib/auth/admin-manage-rate-limit";
+import type { RequestMeta } from "@/lib/auth/types";
 
 type Repository = Pick<typeof repository, "listTaxonomy" | "createTaxonomyItem" | "renameTaxonomyItem" | "deleteTaxonomyItem">;
 
@@ -37,11 +39,14 @@ export function createAdminSettingsService(data: Repository = repository) {
       requireAdmin(session);
       return data.listTaxonomy();
     },
-    async create(session: Session, input: { type: string; slug: string; name: string }) {
+    async create(session: Session, input: { type: string; slug: string; name: string; meta?: RequestMeta }) {
       requireAdmin(session);
       const type = parseType(input.type);
+      const slug = validateSlug(input.slug);
+      const name = validateName(input.name);
+      await enforceAdminManageRateLimit(`taxonomy:${type}:create:${slug}`, input.meta?.ip ?? "unknown");
       try {
-        return await data.createTaxonomyItem(type, validateSlug(input.slug), validateName(input.name), session.id);
+        return await data.createTaxonomyItem(type, slug, name, session.id);
       } catch (error) {
         if (typeof error === "object" && error !== null && "code" in error && error.code === "23505") {
           throw new AuthError("CONFLICT", "该标识已存在，请使用其他标识。");
@@ -49,15 +54,22 @@ export function createAdminSettingsService(data: Repository = repository) {
         throw error;
       }
     },
-    async rename(session: Session, input: { type: string; id: string; name: string }) {
+    async rename(session: Session, input: { type: string; id: string; name: string; meta?: RequestMeta }) {
       requireAdmin(session);
-      const item = await data.renameTaxonomyItem(parseType(input.type), input.id.trim(), validateName(input.name), session.id);
+      const type = parseType(input.type);
+      const id = input.id.trim();
+      const name = validateName(input.name);
+      await enforceAdminManageRateLimit(`taxonomy:${type}:${id}`, input.meta?.ip ?? "unknown");
+      const item = await data.renameTaxonomyItem(type, id, name, session.id);
       if (!item) throw new AuthError("NOT_FOUND", "分类或标签不存在。");
       return item;
     },
-    async remove(session: Session, input: { type: string; id: string }) {
+    async remove(session: Session, input: { type: string; id: string; meta?: RequestMeta }) {
       requireAdmin(session);
-      const result = await data.deleteTaxonomyItem(parseType(input.type), input.id.trim(), session.id);
+      const type = parseType(input.type);
+      const id = input.id.trim();
+      await enforceAdminManageRateLimit(`taxonomy:${type}:${id}`, input.meta?.ip ?? "unknown");
+      const result = await data.deleteTaxonomyItem(type, id, session.id);
       if (result === "missing") throw new AuthError("NOT_FOUND", "分类或标签不存在。");
       if (result === "in-use") throw new AuthError("CONFLICT", "已有文章使用此分类或标签，不能删除。");
     },

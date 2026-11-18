@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/service";
 import { adminErrorResponse, readBody } from "@/lib/auth/route-utils";
+import { requestMeta } from "@/lib/auth/http";
 import {
   createAdminTaxonomyItem,
   deleteAdminTaxonomyItem,
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
       type: body.type ?? "",
       slug: body.slug ?? "",
       name: body.name ?? "",
+      meta: requestMeta(request),
     });
     return NextResponse.json({ item }, { status: 201 });
   } catch (error) {
@@ -40,6 +42,7 @@ export async function PATCH(request: Request) {
       type: body.type ?? "",
       id: body.id ?? "",
       name: body.name ?? "",
+      meta: requestMeta(request),
     });
     return NextResponse.json({ item });
   } catch (error) {
@@ -51,7 +54,7 @@ export async function DELETE(request: Request) {
   try {
     const session = await requireSession({ admin: true });
     const params = new URL(request.url).searchParams;
-    await deleteAdminTaxonomyItem(session, { type: params.get("type") ?? "", id: params.get("id") ?? "" });
+    await deleteAdminTaxonomyItem(session, { type: params.get("type") ?? "", id: params.get("id") ?? "", meta: requestMeta(request) });
     return NextResponse.json({ ok: true });
   } catch (error) {
     return adminErrorResponse(error);
