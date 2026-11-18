@@ -13,7 +13,7 @@ npm run db:setup
 npm run dev
 ```
 
-打开 `http://127.0.0.1:3000`。`.env.local` 和数据库卷只用于本地开发。Docker PostgreSQL 绑定到 `127.0.0.1:5432`，不会监听局域网接口。
+打开 `http://127.0.0.1:3100`。`.env.local` 和数据库卷只用于本地开发。Docker PostgreSQL 绑定到 `127.0.0.1:5432`，不会监听局域网接口。
 
 `db:setup` 会启动数据库、应用 SQL 迁移，并写入示例分类、标签、文章和草稿。种子脚本用于空白本地开发库，不要拿它覆盖真实线上内容。Docker volume 会在停止容器后保留数据。
 
