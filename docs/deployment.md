@@ -1,0 +1,59 @@
+# 自动部署
+
+仓库的 GitHub Actions 分为三个阶段：
+
+- `verify` 在 Pull Request 和 `main` 推送执行测试、类型检查、lint、生产构建和 Linux/amd64 Docker 构建。此阶段不登录 SWR、不推送镜像、不连接服务器。
+- `publish` 只在 `main` 推送且 `verify` 成功后运行，向华为云 SWR 推送 `registry/repository:<commit-sha>`。不使用 `latest`，也不执行数据库迁移。
+- `deploy` 只在 `publish` 成功后运行，通过固定主机公钥的 SSH 连接服务器，调用 [`deploy/remote-deploy.sh`](../deploy/remote-deploy.sh)。脚本只更新 `web` 服务，使用 Compose override 指向新镜像；PostgreSQL 不在 Compose 命令中作为依赖重建。健康检查失败时自动恢复之前的 Web 镜像并再次检查健康状态，工作流会以失败状态结束并报告回滚结果。
+
+部署脚本要求服务器已有 `/srv/wikilog/.swr-pull.env`，权限为 `600`，内容格式如下。真实值只在服务器上填写，不提交仓库，不放入 GitHub workflow：
+
+```dotenv
+WIKILOG_SWR_USERNAME=<pull-only-SWR-username>
+WIKILOG_SWR_PASSWORD=<pull-only-SWR-password-or-token>
+```
+
+服务器需预先准备专用部署账号（例如 `wikilog-deploy`），只允许使用专用 Ed25519 公钥登录；该账号需要读取 `/srv/wikilog` 下的生产 Compose、`.env` 和 SWR 拉取文件，并对 `/srv/wikilog/deploy-state` 有写权限。加入 `docker` 组即可完成 Docker 操作，但 Docker 组等同于高权限，必须把该账号和私钥仅用于本项目部署。不要复用临时 SSH 密钥，也不要使用 root 私钥。
+
+服务器还需保持以下前置条件：`wikilog-pilot` 外部网络存在，`wikilog-postgres-pilot` 正常运行，Nginx 已监听 80 并把请求转发到 `127.0.0.1:3000`，`curl` 和 Docker Compose 可用。部署脚本不会执行迁移、创建管理员、修改数据库权限或启动 PostgreSQL。
+
+## GitHub 手动配置
+
+在仓库 Settings 中配置以下 Actions Variables：
+
+| 名称 | 内容 |
+| --- | --- |
+| `WIKILOG_SWR_REGISTRY` | SWR 区域 registry 主机，例如 `swr.cn-south-1.myhuaweicloud.com` |
+| `WIKILOG_SWR_IMAGE` | SWR 组织和仓库路径，例如 `my-org/wikilog` |
+| `WIKILOG_DEPLOY_HOST` | 服务器公网 IP 或 DNS 主机名 |
+| `WIKILOG_DEPLOY_PORT` | SSH 端口，通常为 `22`；留空时 workflow 使用 `22` |
+| `WIKILOG_DEPLOY_USER` | 专用部署账号，例如 `wikilog-deploy` |
+
+在 Secrets 中配置以下值。不要把值贴到聊天或提交到仓库：
+
+| 名称 | 内容 |
+| --- | --- |
+| `WIKILOG_SWR_USERNAME` | 具备推送权限的 SWR 用户或机器人用户名 |
+| `WIKILOG_SWR_PASSWORD` | 对应的 SWR 密码或令牌 |
+| `WIKILOG_DEPLOY_SSH_PRIVATE_KEY` | 专用部署账号的 Ed25519 私钥，GitHub Actions 只在 runner 临时目录使用 |
+| `WIKILOG_DEPLOY_KNOWN_HOSTS` | 从可信控制台或已核验 SSH 连接取得的服务器主机公钥行，完整写入该 Secret；workflow 使用 `StrictHostKeyChecking=yes`，不会运行 `ssh-keyscan` 自动信任未知主机 |
+
+SWR 推送账号和服务器上的 SWR 拉取账号应分开，拉取账号只授予目标仓库的 pull 权限。部署账号的 SSH 公钥、SWR 拉取文件和 GitHub Secret 由负责人手动创建和撤销。首次启用前，先在 GitHub Actions 的测试分支验证 `verify`，再确认 `main` 保护规则要求 workflow 成功后才能合并；本次不会代为推送、部署或创建任何 Secret。
+
+回滚由远程脚本在健康检查失败时自动完成。服务器会保留 `/srv/wikilog/deploy-state/.wikilog-previous-image` 和 Compose override；若自动回滚也失败，workflow 会失败并输出 `ROLLBACK_FAILED`，需要负责人登录服务器检查容器状态后按该文件中的上一镜像引用手动恢复。数据库卷和内容数据不会被回滚脚本删除或重建。
+
+自动回滚失败时，可由负责人在服务器上执行以下手动恢复步骤；命令只更新 `web`，不会启动迁移或操作 PostgreSQL：
+
+```sh
+previous_image=$(cat /srv/wikilog/deploy-state/.wikilog-previous-image)
+cat > /srv/wikilog/deploy-state/docker-compose.deploy.override.yml <<EOF
+services:
+  web:
+    image: ${previous_image}
+EOF
+docker compose -p wikilog \
+  -f /srv/wikilog/docker-compose.production.yml \
+  -f /srv/wikilog/deploy-state/docker-compose.deploy.override.yml \
+  up -d --no-deps --pull never web
+curl --fail --silent --show-error --max-time 10 http://127.0.0.1/
+```

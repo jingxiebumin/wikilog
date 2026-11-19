@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 
 on:
   pull_request:
@@ -9,12 +9,19 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: wikilog-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   verify:
+    name: Verify
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -42,3 +49,126 @@ jobs:
 
       - name: Build Linux Docker image
         run: docker buildx build --platform linux/amd64 --tag wikilog:ci --load .
+
+  publish:
+    name: Publish image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-latest
+    env:
+      REGISTRY: ${{ vars.WIKILOG_SWR_REGISTRY }}
+      IMAGE_REPOSITORY: ${{ vars.WIKILOG_SWR_IMAGE }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Validate SWR image settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$REGISTRY"
+          test -n "$IMAGE_REPOSITORY"
+          [[ "$REGISTRY" =~ ^[A-Za-z0-9._-]+$ ]]
+          [[ "$IMAGE_REPOSITORY" =~ ^[A-Za-z0-9._/-]+$ ]]
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Huawei Cloud SWR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.WIKILOG_SWR_REGISTRY }}
+          username: ${{ secrets.WIKILOG_SWR_USERNAME }}
+          password: ${{ secrets.WIKILOG_SWR_PASSWORD }}
+
+      - name: Build and push immutable image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          tags: ${{ vars.WIKILOG_SWR_REGISTRY }}/${{ vars.WIKILOG_SWR_IMAGE }}:${{ github.sha }}
+
+  deploy:
+    name: Deploy application
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: publish
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ vars.WIKILOG_DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ vars.WIKILOG_DEPLOY_PORT || '22' }}
+      DEPLOY_USER: ${{ vars.WIKILOG_DEPLOY_USER }}
+      REGISTRY: ${{ vars.WIKILOG_SWR_REGISTRY }}
+      IMAGE_REF: ${{ vars.WIKILOG_SWR_REGISTRY }}/${{ vars.WIKILOG_SWR_IMAGE }}:${{ github.sha }}
+      KNOWN_HOSTS: ${{ secrets.WIKILOG_DEPLOY_KNOWN_HOSTS }}
+      DEPLOY_PRIVATE_KEY: ${{ secrets.WIKILOG_DEPLOY_SSH_PRIVATE_KEY }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Validate deployment settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          test -n "$REGISTRY"
+          test -n "$DEPLOY_PORT"
+          test -n "$KNOWN_HOSTS"
+          test -n "$DEPLOY_PRIVATE_KEY"
+          [[ "$REGISTRY" =~ ^[A-Za-z0-9._-]+$ ]]
+          [[ "$DEPLOY_PORT" =~ ^[0-9]+$ ]]
+          (( DEPLOY_PORT >= 1 && DEPLOY_PORT <= 65535 ))
+          [[ "$IMAGE_REF" =~ ^[A-Za-z0-9._:/-]+$ ]]
+
+      - name: Configure pinned SSH host key
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh"
+          printf '%s\n' "$KNOWN_HOSTS" > "$RUNNER_TEMP/ssh/known_hosts"
+          chmod 600 "$RUNNER_TEMP/ssh/known_hosts"
+
+      - name: Update server and verify health
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          private_key="$RUNNER_TEMP/ssh/id_ed25519"
+          printf '%s\n' "$DEPLOY_PRIVATE_KEY" | tr -d '\r' > "$private_key"
+          chmod 600 "$private_key"
+          cleanup_files() {
+            rm -f -- "$private_key" "$RUNNER_TEMP/ssh/known_hosts"
+          }
+          trap cleanup_files EXIT
+          ssh-keygen -y -f "$private_key" > /dev/null
+          ssh_options=(
+            -i "$private_key"
+            -o BatchMode=yes
+            -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts"
+            -p "$DEPLOY_PORT"
+          )
+          scp_options=(
+            -i "$RUNNER_TEMP/ssh/id_ed25519"
+            -o BatchMode=yes
+            -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$RUNNER_TEMP/ssh/known_hosts"
+            -P "$DEPLOY_PORT"
+          )
+          target="$DEPLOY_USER@$DEPLOY_HOST"
+          remote_script="/tmp/wikilog-deploy-${GITHUB_SHA}.sh"
+          cleanup() {
+            ssh "${ssh_options[@]}" "$target" "rm -f -- '$remote_script'" > /dev/null 2>&1 || true
+            cleanup_files
+          }
+          trap cleanup EXIT
+          scp "${scp_options[@]}" deploy/remote-deploy.sh "$target:$remote_script"
+          ssh "${ssh_options[@]}" "$target" "bash '$remote_script' '$REGISTRY' '$IMAGE_REF'"
