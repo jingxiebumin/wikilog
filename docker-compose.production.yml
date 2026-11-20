@@ -1,11 +1,14 @@
 services:
   web:
-    image: wikilog-app:pilot
+    image: wikilog-app:head-82565e3
     restart: unless-stopped
     env_file:
       - .env
     environment:
       AUTH_ENABLED: "false"
+      ADMIN_QA_ENABLED: "false"
+      DEEPSEEK_DATA_POLICY_VERIFIED: "false"
+      WIKI_AI_GENERATION_ENABLED: "false"
     ports:
       - "127.0.0.1:3000:3000"
     volumes:

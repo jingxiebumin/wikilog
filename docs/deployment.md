@@ -1,5 +1,13 @@
 # 自动部署
 
+## 部署测试记录
+
+2026-11-20：负责人已完成华为云服务器上的 CI/CD 部署测试。由提交 `5a106ca` 触发的 GitHub Actions 运行中，`Verify`、`Publish image` 和 `Deploy application` 三个 job 均成功：质量检查和 Linux/amd64 镜像构建通过，镜像按提交 SHA 发布到 SWR，服务器上的 Web 服务更新并通过健康检查；负责人确认服务器 IP/HTTP 地址可以正常访问。
+
+本次记录证明 CI/CD、SWR 镜像发布、SSH 部署、Web 健康检查和基本访问链路已经跑通。它不替代 Issue 08 要求的匿名、reader、admin 分角色端到端验收，也不代表问答或 Wiki AI 功能已经启用；当前 AI 问答和 Wiki AI 生成仍保持关闭。CloudBase、域名、备案和 HTTPS 继续排除。
+
+本次运行出现的 action Node.js 运行时弃用提示不影响结果；后续更新 workflow 使用的 action 版本时，应再次执行 CI 验证。部署凭据和服务器上的 SWR 拉取文件不写入仓库，自动部署、SWR 凭据和服务器部署方案以当前已验证配置为准，后续调整需单独确认。
+
 仓库的 GitHub Actions 分为三个阶段：
 
 - `verify` 在 Pull Request 和 `main` 推送执行测试、类型检查、lint、生产构建和 Linux/amd64 Docker 构建。此阶段不登录 SWR、不推送镜像、不连接服务器。
