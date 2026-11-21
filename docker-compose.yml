@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: wikilog
       POSTGRES_PASSWORD: wikilog_local_only
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:16432:5432"
     volumes:
       - wikilog-postgres-data:/var/lib/postgresql
     healthcheck:
