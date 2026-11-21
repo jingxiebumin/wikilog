@@ -14,7 +14,7 @@ const extensions: Record<string, string> = {
 function storageDirectory(): string {
   const directory = process.env.AVATAR_STORAGE_DIR?.trim();
   if (!directory || process.env.AVATAR_STORAGE_VERIFIED !== "true") {
-    throw new AuthError("STORAGE_UNAVAILABLE", "头像存储尚未完成持久性和备份验收。");
+    throw new AuthError("STORAGE_UNAVAILABLE", "头像服务器存储尚未完成验收。");
   }
   return path.resolve(directory);
 }

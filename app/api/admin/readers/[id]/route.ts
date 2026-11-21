@@ -5,9 +5,9 @@ import { adminErrorResponse, readBody } from "@/lib/auth/route-utils";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const body = await readBody(request);
     const { id } = await context.params;
     const operator = await requireSession({ admin: true });
+    const body = await readBody(request);
     const user = await adminEditReader({
       operator,
       targetUserId: id,
@@ -25,9 +25,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const body = await readBody(request);
     const { id } = await context.params;
     const operator = await requireSession({ admin: true });
+    const body = await readBody(request);
     await adminSoftDeleteReader({ operator, targetUserId: id, reason: body.reason ?? "", meta: requestMeta(request) });
     return NextResponse.json({ ok: true });
   } catch (error) {

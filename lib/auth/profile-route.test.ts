@@ -44,9 +44,14 @@ describe("personal profile API", () => {
       INSERT INTO users (email, display_name, password_hash, role, status)
       VALUES ('admin@example.test', 'Admin', 'hash', 'admin', 'active') RETURNING id
     `);
+    const otherReader = await database.query<{ id: string }>(`
+      INSERT INTO users (email, display_name, password_hash, role, status)
+      VALUES ('other-reader@example.test', 'Other Reader', 'hash', 'reader', 'active') RETURNING id
+    `);
     userId = reader.rows[0].id;
     const tokenHash = createHash("sha256").update(state.token).digest("hex");
     await database.query("INSERT INTO reader_sessions (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '1 day')", [userId, tokenHash]);
+    await database.query("INSERT INTO reader_sessions (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '1 day')", [otherReader.rows[0].id, createHash("sha256").update("other-reader-session-token").digest("hex")]);
     await database.query("INSERT INTO reader_sessions (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '1 day')", [admin.rows[0].id, createHash("sha256").update("admin-session-token").digest("hex")]);
     route = await import("@/app/api/auth/profile/route");
     avatarRoute = await import("@/app/api/auth/avatar/route");
@@ -164,6 +169,8 @@ describe("personal profile API", () => {
       expect(image.headers.get("content-type")).toBe("image/png");
       expect(image.headers.get("cache-control")).toContain("private");
       expect(new Uint8Array(await image.arrayBuffer())).toEqual(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]));
+      state.token = "other-reader-session-token";
+      expect((await avatarRoute.GET()).status).toBe(404);
       state.token = "admin-session-token";
       expect((await avatarRoute.GET()).status).toBe(404);
     } finally {

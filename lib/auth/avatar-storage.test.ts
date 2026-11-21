@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -24,6 +24,10 @@ describe("private avatar storage", () => {
     const avatarStorage = await storage();
     const stored = await avatarStorage.storeAvatar(pngBytes, "image/png");
     expect(stored.key).toMatch(/^[0-9a-f-]+\.png$/);
+    if (process.platform !== "win32") {
+      expect((await stat(directories.at(-1)!)).mode & 0o777).toBe(0o700);
+      expect((await stat(path.join(directories.at(-1)!, stored.key))).mode & 0o777).toBe(0o600);
+    }
     await expect(avatarStorage.readAvatar(stored.key)).resolves.toMatchObject({ contentType: "image/png" });
     const image = await avatarStorage.readAvatar(stored.key);
     expect(image?.bytes).toEqual(pngBytes);
@@ -35,7 +39,10 @@ describe("private avatar storage", () => {
     vi.stubEnv("AVATAR_STORAGE_DIR", directory);
     vi.stubEnv("AVATAR_STORAGE_VERIFIED", "false");
     const avatarStorage = await import("./avatar-storage");
-    await expect(avatarStorage.storeAvatar(pngBytes, "image/png")).rejects.toMatchObject({ code: "STORAGE_UNAVAILABLE" });
+    await expect(avatarStorage.storeAvatar(pngBytes, "image/png")).rejects.toMatchObject({
+      code: "STORAGE_UNAVAILABLE",
+      message: "头像服务器存储尚未完成验收。",
+    });
   });
 
   it("rejects animated PNG content and unsupported image types", async () => {

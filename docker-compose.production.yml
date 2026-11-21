@@ -6,6 +6,8 @@ services:
       - .env
     environment:
       AUTH_ENABLED: "false"
+      AVATAR_STORAGE_DIR: /var/lib/wikilog/private-avatars
+      AVATAR_STORAGE_VERIFIED: "true"
       ADMIN_QA_ENABLED: "false"
       DEEPSEEK_DATA_POLICY_VERIFIED: "false"
       WIKI_AI_GENERATION_ENABLED: "false"
@@ -13,6 +15,7 @@ services:
       - "127.0.0.1:3000:3000"
     volumes:
       - /srv/wikilog/uploads:/app/uploads:ro
+      - /srv/wikilog/private-avatars:/var/lib/wikilog/private-avatars:rw
     networks:
       - pilot
 

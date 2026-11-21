@@ -19,8 +19,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await readBody(request);
     const operator = await requireSession({ admin: true });
+    const body = await readBody(request);
     const user = await adminCreateReader({
       operator,
       email: body.email ?? "",
