@@ -12,7 +12,10 @@ const repository = vi.hoisted(() => ({
   mergeWikiPages: vi.fn(),
 }));
 
+const rateLimit = vi.hoisted(() => ({ enforce: vi.fn() }));
+
 vi.mock("./repository", () => repository);
+vi.mock("@/lib/auth/admin-manage-rate-limit", () => ({ enforceAdminManageRateLimit: rateLimit.enforce }));
 
 describe("Wiki service", () => {
   beforeEach(() => {
@@ -37,17 +40,23 @@ describe("Wiki service", () => {
     const { createWikiService } = await import("./service");
     const service = createWikiService(repository);
     const admin = { id: "admin-id", role: "admin", status: "active", passwordResetRequired: false } as Session;
+    const meta = { ip: "127.0.0.1" };
 
     await service.listAdminPages(admin);
     await service.savePageDraft(admin, {
       slug: "database-transactions", title: "事务", body: "正文。",
       sourceArticleVersionIds: ["source-version"], relatedSlugs: [],
-    });
-    await service.publishPageVersion(admin, "page-id", "version-id");
+    }, meta);
+    await service.publishPageVersion(admin, "page-id", "version-id", meta);
+    await service.mergePages(admin, "source-topic", "target-topic", meta);
 
     expect(repository.listAdminWikiPages).toHaveBeenCalledOnce();
     expect(repository.saveWikiPageDraft).toHaveBeenCalledWith(expect.anything(), "admin-id");
     expect(repository.publishWikiPageVersion).toHaveBeenCalledWith("page-id", "version-id", "admin-id");
+    expect(repository.mergeWikiPages).toHaveBeenCalledWith("source-topic", "target-topic", "admin-id");
+    expect(rateLimit.enforce).toHaveBeenNthCalledWith(1, "wiki:database-transactions", "127.0.0.1");
+    expect(rateLimit.enforce).toHaveBeenNthCalledWith(2, "wiki:page-id", "127.0.0.1");
+    expect(rateLimit.enforce).toHaveBeenNthCalledWith(3, "wiki:target-topic", "127.0.0.1");
   });
 
   it.each([

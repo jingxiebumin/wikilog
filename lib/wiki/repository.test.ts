@@ -221,6 +221,33 @@ describe("Wiki repository", () => {
     await expect(getWikiPageHistory("transaction-isolation")).resolves.toEqual([]);
   });
 
+  it("keeps only currently valid sources when merging a page with a stale source", async () => {
+    const source = await saveWikiPageDraft({
+      slug: "mixed-source-topic", title: "多来源主题", body: "原页面正文。",
+      sourceArticleVersionIds: [sourceArticleVersionId, secondArticleVersionId], relatedSlugs: [],
+    }, adminId);
+    await publishWikiPageVersion(source.pageId, source.versionId, adminId);
+    const staleArticle = await database.query<{ article_id: string }>(
+      "SELECT article_id FROM article_versions WHERE id = $1", [sourceArticleVersionId],
+    );
+    await database.query("UPDATE articles SET archived_at = now() WHERE id = $1", [staleArticle.rows[0].article_id]);
+
+    const target = await saveWikiPageDraft({
+      slug: "merge-target-topic", title: "保留主题", body: "保留页面正文。",
+      sourceArticleVersionIds: [secondArticleVersionId], relatedSlugs: [],
+    }, adminId);
+    await publishWikiPageVersion(target.pageId, target.versionId, adminId);
+
+    const draft = await mergeWikiPages("mixed-source-topic", "merge-target-topic", adminId);
+
+    await expect(getWikiPageHistory("merge-target-topic")).resolves.toContainEqual(
+      expect.objectContaining({ id: draft.versionId, status: "draft" }),
+    );
+    await expect(findPublishedWikiPage("mixed-source-topic")).resolves.toMatchObject({
+      sources: [{ articleVersionId: secondArticleVersionId }],
+    });
+  });
+
   it("requires related pages to be publicly available when a draft is saved", async () => {
     await saveWikiPageDraft({
       slug: "database-indexes", title: "数据库索引", body: "索引正文。",

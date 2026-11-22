@@ -536,9 +536,17 @@ export async function mergeWikiPages(sourceSlug: string, targetSlug: string, act
     if (!source.rows[0] || !target.rows[0]) throw new Error("合并要求两个 Wiki 页面均有有效已发布版本。");
 
     const sourceIds = await client.query<{ article_version_id: string }>(`
-      SELECT article_version_id FROM wiki_page_version_sources WHERE page_version_id = $1 AND del_flag = false
-      UNION
-      SELECT article_version_id FROM wiki_page_version_sources WHERE page_version_id = $2 AND del_flag = false
+      SELECT candidate.article_version_id
+      FROM (
+        SELECT article_version_id FROM wiki_page_version_sources WHERE page_version_id = $1 AND del_flag = false
+        UNION
+        SELECT article_version_id FROM wiki_page_version_sources WHERE page_version_id = $2 AND del_flag = false
+      ) candidate
+      JOIN article_versions version ON version.id = candidate.article_version_id
+        AND version.status = 'published' AND version.del_flag = false
+      JOIN articles article ON article.id = version.article_id
+        AND article.current_published_version_id = version.id
+        AND article.del_flag = false AND article.archived_at IS NULL AND article.deleted_at IS NULL
     `, [source.rows[0].version_id, target.rows[0].version_id]);
     const related = await client.query<{ slug: string }>(`
       SELECT DISTINCT other.slug

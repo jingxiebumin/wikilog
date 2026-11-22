@@ -1,6 +1,8 @@
 import "server-only";
 import type { Session } from "@/lib/auth/types";
 import { AuthError } from "@/lib/auth/errors";
+import { enforceAdminManageRateLimit } from "@/lib/auth/admin-manage-rate-limit";
+import type { RequestMeta } from "@/lib/auth/types";
 import * as repository from "./repository";
 import type { SaveWikiPageDraftInput } from "./repository";
 
@@ -34,16 +36,19 @@ export function createWikiService(wikiRepository: WikiRepository = repository) {
       requireAdmin(session);
       return wikiRepository.getWikiPageHistory(slug);
     },
-    async savePageDraft(session: Session, input: SaveWikiPageDraftInput) {
+    async savePageDraft(session: Session, input: SaveWikiPageDraftInput, meta?: RequestMeta) {
       requireAdmin(session);
+      await enforceAdminManageRateLimit(`wiki:${input.slug}`, meta?.ip ?? "unknown");
       return wikiRepository.saveWikiPageDraft(input, session.id);
     },
-    async publishPageVersion(session: Session, pageId: string, versionId: string) {
+    async publishPageVersion(session: Session, pageId: string, versionId: string, meta?: RequestMeta) {
       requireAdmin(session);
+      await enforceAdminManageRateLimit(`wiki:${pageId}`, meta?.ip ?? "unknown");
       return wikiRepository.publishWikiPageVersion(pageId, versionId, session.id);
     },
-    async mergePages(session: Session, sourceSlug: string, targetSlug: string) {
+    async mergePages(session: Session, sourceSlug: string, targetSlug: string, meta?: RequestMeta) {
       requireAdmin(session);
+      await enforceAdminManageRateLimit(`wiki:${targetSlug}`, meta?.ip ?? "unknown");
       return wikiRepository.mergeWikiPages(sourceSlug, targetSlug, session.id);
     },
   };

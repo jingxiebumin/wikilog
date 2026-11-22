@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   savedDraft: undefined as unknown,
   published: undefined as unknown,
   merged: undefined as unknown,
+  metadata: undefined as unknown,
 }));
 
 vi.mock("@/lib/auth/service", async () => {
@@ -27,9 +28,9 @@ vi.mock("@/lib/auth/service", async () => {
 vi.mock("@/lib/wiki/service", () => ({
   listAdminWikiPages: vi.fn(async () => state.pages),
   getAdminWikiPageHistory: vi.fn(async () => state.history),
-  saveAdminWikiPageDraft: vi.fn(async (_session, input) => { state.savedDraft = input; return { pageId: "page-id", versionId: "draft-id" }; }),
-  publishAdminWikiPageVersion: vi.fn(async (_session, pageId, versionId) => { state.published = { pageId, versionId }; }),
-  mergeAdminWikiPages: vi.fn(async (_session, sourceSlug, targetSlug) => { state.merged = { sourceSlug, targetSlug }; return { pageId: "target-id", versionId: "merge-draft-id" }; }),
+  saveAdminWikiPageDraft: vi.fn(async (_session, input, meta) => { state.savedDraft = input; state.metadata = meta; return { pageId: "page-id", versionId: "draft-id" }; }),
+  publishAdminWikiPageVersion: vi.fn(async (_session, pageId, versionId, meta) => { state.published = { pageId, versionId }; state.metadata = meta; }),
+  mergeAdminWikiPages: vi.fn(async (_session, sourceSlug, targetSlug, meta) => { state.merged = { sourceSlug, targetSlug }; state.metadata = meta; return { pageId: "target-id", versionId: "merge-draft-id" }; }),
 }));
 
 describe("admin Wiki routes", () => {
@@ -41,6 +42,7 @@ describe("admin Wiki routes", () => {
     state.savedDraft = undefined;
     state.published = undefined;
     state.merged = undefined;
+    state.metadata = undefined;
   });
 
   afterEach(() => {
@@ -65,10 +67,11 @@ describe("admin Wiki routes", () => {
     const create = await route.POST(jsonRequest({
       slug: "database-transactions", title: "数据库事务", body: "事务保证一组变更的原子性。",
       sourceArticleVersionIds: ["article-version-id"], relatedSlugs: [],
-    }));
+    }, { "x-forwarded-for": "203.0.113.8" }));
     expect(create.status).toBe(201);
     await expect(create.json()).resolves.toMatchObject({ draft: { pageId: "page-id", versionId: "draft-id" } });
     expect(state.savedDraft).toMatchObject({ slug: "database-transactions", sourceArticleVersionIds: ["article-version-id"] });
+    expect(state.metadata).toEqual({ ip: "203.0.113.8" });
   });
 
   it("rejects incomplete draft input before calling the service", async () => {
@@ -81,24 +84,26 @@ describe("admin Wiki routes", () => {
 
   it("publishes a selected version and creates a merge draft without redirecting immediately", async () => {
     const publishRoute = await import("@/app/api/admin/wiki/pages/[pageId]/versions/[versionId]/publish/route");
-    const published = await publishRoute.POST(new Request("http://localhost/api/admin/wiki/pages/page-id/versions/draft-id/publish", { method: "POST" }), {
+    const published = await publishRoute.POST(new Request("http://localhost/api/admin/wiki/pages/page-id/versions/draft-id/publish", { method: "POST", headers: { "x-real-ip": "203.0.113.9" } }), {
       params: Promise.resolve({ pageId: "page-id", versionId: "draft-id" }),
     });
     expect(published.status).toBe(200);
     expect(state.published).toEqual({ pageId: "page-id", versionId: "draft-id" });
+    expect(state.metadata).toEqual({ ip: "203.0.113.9" });
 
     const mergeRoute = await import("@/app/api/admin/wiki/merge/route");
-    const merged = await mergeRoute.POST(jsonRequest({ sourceSlug: "old-topic", targetSlug: "new-topic" }));
+    const merged = await mergeRoute.POST(jsonRequest({ sourceSlug: "old-topic", targetSlug: "new-topic" }, { "x-forwarded-for": "203.0.113.10" }));
     expect(merged.status).toBe(201);
     await expect(merged.json()).resolves.toMatchObject({ draft: { versionId: "merge-draft-id" } });
     expect(state.merged).toEqual({ sourceSlug: "old-topic", targetSlug: "new-topic" });
+    expect(state.metadata).toEqual({ ip: "203.0.113.10" });
   });
 });
 
-function jsonRequest(body: unknown) {
+function jsonRequest(body: unknown, headers: Record<string, string> = {}) {
   return new Request("http://localhost/api/admin/wiki", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(body),
   });
 }
