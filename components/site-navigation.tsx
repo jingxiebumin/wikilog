@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpenText, Bookmark, CircleUserRound, Hash, LogIn, LogOut, Network, Settings } from "lucide-react";
 import type { UserRole } from "@/lib/auth/types";
 
@@ -30,13 +30,13 @@ export function SiteNavigation({
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const menuItemsRef = useRef<(HTMLAnchorElement | HTMLButtonElement)[]>([]);
 
-  // 菜单项列表
-  const menuItems = [
+  // 菜单项列表 - 使用 useMemo 避免每次渲染都重建
+  const menuItems = useMemo(() => [
     { type: "link" as const, href: "/account", label: "个人中心", icon: CircleUserRound },
     { type: "link" as const, href: "/favorites", label: "我的收藏", icon: Bookmark },
     ...(session?.role === "admin" ? [{ type: "link" as const, href: "/admin", label: "管理员设置", icon: Settings }] : []),
     { type: "button" as const, label: "退出登录", icon: LogOut },
-  ];
+  ], [session?.role]);
 
   // 处理菜单键盘交互
   const handleMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {

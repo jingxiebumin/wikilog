@@ -47,12 +47,7 @@ export const FormField = forwardRef<
       )}
 
       {/* 克隆子元素以添加 aria 属性 */}
-      {isValidElement(children) &&
-      children.type !== 'input' &&
-      children.type !== 'textarea' &&
-      children.type !== 'select'
-        ? children
-        : isValidElement(children)
+      {isValidElement(children)
         ? cloneElement(children as ReactElement<any>, {
             'aria-invalid': error ? 'true' : undefined,
             'aria-describedby': [errorId, helpId].filter(Boolean).join(' ') || undefined,
@@ -110,7 +105,7 @@ export const PasswordInput = forwardRef<
           aria-label={isVisible ? '隐藏密码' : '显示密码'}
           aria-pressed={isVisible}
         >
-          {isVisible ? '👁️' : '👁️‍🗨️'}
+          {isVisible ? '👁️' : '🙈'}
         </button>
       </div>
     </FormField>
