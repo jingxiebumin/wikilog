@@ -35,7 +35,12 @@ const jsonRequest = async (url: string, body: Record<string, string>) => {
 };
 
 function FormError({ message }: { message: string }) {
-  return message ? <p className="form-error" role="alert">{message}</p> : null;
+  return message ? (
+    <p className="form-error" role="alert">
+      <span>⚠️</span>
+      {message}
+    </p>
+  ) : null;
 }
 
 export function LoginForm({ initialError = "" }: { initialError?: string }) {

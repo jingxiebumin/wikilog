@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { CircleUserRound } from "lucide-react";
@@ -43,6 +43,10 @@ export function PersonalCenter({ initialProfile, activeTab = "basic", forcePassw
   const [avatarError, setAvatarError] = useState("");
   const [avatarBusy, setAvatarBusy] = useState(false);
 
+  // 对话框焦点管理
+  const avatarDialogRef = useRef<HTMLDialogElement>(null);
+  const avatarButtonRef = useRef<HTMLButtonElement>(null);
+
   async function saveBasics(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
@@ -84,7 +88,38 @@ export function PersonalCenter({ initialProfile, activeTab = "basic", forcePassw
     setAvatarFile(undefined);
     setAvatarError("");
     setAvatarOpen(false);
+    // 焦点回到打开按钮
+    setTimeout(() => {
+      avatarButtonRef.current?.focus();
+    }, 0);
   }
+
+  // 对话框打开时的焦点管理
+  useEffect(() => {
+    if (avatarOpen && avatarDialogRef.current) {
+      // 移动焦点到对话框的第一个可交互元素（文件输入）
+      const firstInput = avatarDialogRef.current.querySelector("input[type='file']") as HTMLInputElement;
+      firstInput?.focus();
+    }
+  }, [avatarOpen]);
+
+  // 对话框键盘交互 (Escape)
+  useEffect(() => {
+    if (!avatarOpen) return;
+
+    const handleDialogKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeAvatarDialog();
+      }
+    };
+
+    const dialog = avatarDialogRef.current;
+    if (dialog) {
+      dialog.addEventListener("keydown", handleDialogKeyDown);
+      return () => dialog.removeEventListener("keydown", handleDialogKeyDown);
+    }
+  }, [avatarOpen]);
 
   async function uploadAvatar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -110,8 +145,24 @@ export function PersonalCenter({ initialProfile, activeTab = "basic", forcePassw
   return (
     <section className="personal-center">
       <aside className="personal-profile-summary">
-        <button aria-label="更换头像" className="personal-avatar" onClick={() => setAvatarOpen(true)} type="button">
-          {profile.avatarKey ? <Image alt="个人头像" height={104} src="/api/auth/avatar" unoptimized width={104} /> : <CircleUserRound aria-hidden="true" size={58} strokeWidth={1.2} />}
+        <button
+          ref={avatarButtonRef}
+          aria-label="更换头像"
+          className="personal-avatar"
+          onClick={() => setAvatarOpen(true)}
+          type="button"
+        >
+          {profile.avatarKey ? (
+            <Image
+              alt="个人头像"
+              height={104}
+              src="/api/auth/avatar"
+              unoptimized
+              width={104}
+            />
+          ) : (
+            <CircleUserRound aria-hidden="true" size={58} strokeWidth={1.2} />
+          )}
           <span aria-hidden="true">+</span>
         </button>
         <h2>{profile.displayName || "未设置昵称"}</h2>
@@ -142,28 +193,77 @@ export function PersonalCenter({ initialProfile, activeTab = "basic", forcePassw
           </form>
         ) : tab === "email" ? <EmailForm currentEmail={profile.email} /> : <PasswordForm requireDisplayName={forcePasswordChange && !profile.displayName} />}
       </div>
-      {avatarOpen ? <dialog aria-labelledby="avatar-dialog-title" className="admin-reader-dialog avatar-dialog" open>
-        <form className="account-form" onSubmit={uploadAvatar}>
-          <h2 id="avatar-dialog-title">上传头像</h2>
-          {avatarError ? <p className="form-error" role="alert">{avatarError}</p> : null}
-          <div className="avatar-preview">{avatarPreview ? <Image alt="头像预览" height={132} src={avatarPreview} unoptimized width={132} /> : <CircleUserRound aria-hidden="true" size={58} />}</div>
-          <label className="form-field"><span>JPEG、PNG 或 WebP，最大 5 MB</span><input accept="image/jpeg,image/png,image/webp" onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-            setAvatarPreview("");
-            setAvatarFile(undefined);
-            if (!file) return;
-            if (file.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-              setAvatarError("请选择 5 MB 以内的 JPEG、PNG 或 WebP 图片。");
-              return;
-            }
-            setAvatarError("");
-            setAvatarFile(file);
-            setAvatarPreview(URL.createObjectURL(file));
-          }} type="file" /></label>
-          <div className="profile-form-actions"><button disabled={!avatarFile || avatarBusy} type="submit">{avatarBusy ? "上传中…" : "确认并上传"}</button><button className="button-secondary" disabled={avatarBusy} onClick={closeAvatarDialog} type="button">取消</button></div>
-        </form>
-      </dialog> : null}
+      {avatarOpen ? (
+        <dialog
+          ref={avatarDialogRef}
+          aria-labelledby="avatar-dialog-title"
+          className="admin-reader-dialog avatar-dialog"
+          open
+        >
+          <form className="account-form" onSubmit={uploadAvatar}>
+            <h2 id="avatar-dialog-title">上传头像</h2>
+            {avatarError ? (
+              <p className="form-error" role="alert">
+                ⚠️ {avatarError}
+              </p>
+            ) : null}
+            <div className="avatar-preview">
+              {avatarPreview ? (
+                <Image
+                  alt="头像预览"
+                  height={132}
+                  src={avatarPreview}
+                  unoptimized
+                  width={132}
+                />
+              ) : (
+                <CircleUserRound aria-hidden="true" size={58} />
+              )}
+            </div>
+            <label className="form-field">
+              <span>JPEG、PNG 或 WebP，最大 5 MB</span>
+              <input
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+                  setAvatarPreview("");
+                  setAvatarFile(undefined);
+                  if (!file) return;
+                  if (
+                    file.size > 5 * 1024 * 1024 ||
+                    !["image/jpeg", "image/png", "image/webp"].includes(
+                      file.type
+                    )
+                  ) {
+                    setAvatarError(
+                      "请选择 5 MB 以内的 JPEG、PNG 或 WebP 图片。"
+                    );
+                    return;
+                  }
+                  setAvatarError("");
+                  setAvatarFile(file);
+                  setAvatarPreview(URL.createObjectURL(file));
+                }}
+                type="file"
+              />
+            </label>
+            <div className="profile-form-actions">
+              <button disabled={!avatarFile || avatarBusy} type="submit">
+                {avatarBusy ? "上传中…" : "确认并上传"}
+              </button>
+              <button
+                className="button-secondary"
+                disabled={avatarBusy}
+                onClick={closeAvatarDialog}
+                type="button"
+              >
+                取消
+              </button>
+            </div>
+          </form>
+        </dialog>
+      ) : null}
     </section>
   );
 }

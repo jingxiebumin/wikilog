@@ -26,8 +26,68 @@ export function SiteNavigation({
   const pathname = usePathname();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [avatarUnavailable, setAvatarUnavailable] = useState(false);
+  const [focusedMenuItemIndex, setFocusedMenuItemIndex] = useState(0);
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const menuItemsRef = useRef<(HTMLAnchorElement | HTMLButtonElement)[]>([]);
 
+  // 菜单项列表
+  const menuItems = [
+    { type: "link" as const, href: "/account", label: "个人中心", icon: CircleUserRound },
+    { type: "link" as const, href: "/favorites", label: "我的收藏", icon: Bookmark },
+    ...(session?.role === "admin" ? [{ type: "link" as const, href: "/admin", label: "管理员设置", icon: Settings }] : []),
+    { type: "button" as const, label: "退出登录", icon: LogOut },
+  ];
+
+  // 处理菜单键盘交互
+  const handleMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!accountMenuOpen) return;
+
+    switch (e.key) {
+      case "Escape":
+        setAccountMenuOpen(false);
+        // 焦点回到触发器
+        const trigger = accountMenuRef.current?.querySelector("button[aria-expanded]") as HTMLButtonElement;
+        trigger?.focus();
+        e.preventDefault();
+        break;
+
+      case "ArrowDown":
+        e.preventDefault();
+        setFocusedMenuItemIndex((prev) => (prev + 1) % menuItems.length);
+        break;
+
+      case "ArrowUp":
+        e.preventDefault();
+        setFocusedMenuItemIndex((prev) => (prev - 1 + menuItems.length) % menuItems.length);
+        break;
+
+      case "Home":
+        e.preventDefault();
+        setFocusedMenuItemIndex(0);
+        break;
+
+      case "End":
+        e.preventDefault();
+        setFocusedMenuItemIndex(menuItems.length - 1);
+        break;
+    }
+  };
+
+  // 焦点管理
+  useEffect(() => {
+    if (accountMenuOpen && menuItemsRef.current[focusedMenuItemIndex]) {
+      menuItemsRef.current[focusedMenuItemIndex].focus();
+    }
+  }, [focusedMenuItemIndex, accountMenuOpen]);
+
+  // 菜单打开时自动焦焦到第一项
+  useEffect(() => {
+    if (accountMenuOpen) {
+      setFocusedMenuItemIndex(0);
+    }
+  }, [accountMenuOpen]);
+
+  // 点击外部关闭菜单
   useEffect(() => {
     if (!accountMenuOpen) return;
     const closeOnOutsideClick = (event: PointerEvent) => {
@@ -60,18 +120,79 @@ export function SiteNavigation({
         </Link>
       ) : null}
       {session ? (
-        <div className="account-menu" ref={accountMenuRef}>
-          <button aria-expanded={accountMenuOpen} aria-haspopup="menu" className="account-menu-trigger" onClick={() => setAccountMenuOpen((current) => !current)} type="button">
-            {avatarUnavailable ? <CircleUserRound aria-hidden="true" size={19} strokeWidth={1.8} /> : <Image alt="" className="nav-avatar" height={22} onError={() => setAvatarUnavailable(true)} src="/api/auth/avatar" unoptimized width={22} />}
+        <div className="account-menu" ref={accountMenuRef} onKeyDown={handleMenuKeyDown}>
+          <button
+            aria-expanded={accountMenuOpen}
+            aria-haspopup="menu"
+            className="account-menu-trigger"
+            onClick={() => setAccountMenuOpen((current) => !current)}
+            type="button"
+          >
+            {avatarUnavailable ? (
+              <CircleUserRound aria-hidden="true" size={19} strokeWidth={1.8} />
+            ) : (
+              <Image
+                alt=""
+                className="nav-avatar"
+                height={22}
+                onError={() => setAvatarUnavailable(true)}
+                src="/api/auth/avatar"
+                unoptimized
+                width={22}
+              />
+            )}
             <span>{session.displayName}</span>
           </button>
           {accountMenuOpen ? (
-          <div className="account-menu-popover">
-            <Link href="/account" onClick={() => setAccountMenuOpen(false)}><CircleUserRound aria-hidden="true" size={15} />个人中心</Link>
-            <Link href="/favorites" onClick={() => setAccountMenuOpen(false)}><Bookmark aria-hidden="true" size={15} />我的收藏</Link>
-            {session.role === "admin" ? <Link href="/admin" onClick={() => setAccountMenuOpen(false)}><Settings aria-hidden="true" size={15} />管理员设置</Link> : null}
-            <form action="/api/auth/logout" method="post"><button type="submit"><LogOut aria-hidden="true" size={15} />退出登录</button></form>
-          </div>
+            <div
+              className="account-menu-popover"
+              role="menu"
+              aria-label="账户菜单"
+            >
+              {menuItems.map((item, index) => {
+                if (item.type === "link") {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setAccountMenuOpen(false)}
+                      role="menuitem"
+                      ref={(el) => {
+                        if (el) menuItemsRef.current[index] = el;
+                      }}
+                      tabIndex={focusedMenuItemIndex === index ? 0 : -1}
+                    >
+                      <Icon aria-hidden="true" size={15} />
+                      {item.label}
+                    </Link>
+                  );
+                } else {
+                  const Icon = item.icon;
+                  return (
+                    <form
+                      key="logout"
+                      action="/api/auth/logout"
+                      method="post"
+                      style={{ width: "100%" }}
+                    >
+                      <button
+                        type="submit"
+                        role="menuitem"
+                        ref={(el) => {
+                          if (el) menuItemsRef.current[index] = el;
+                        }}
+                        tabIndex={focusedMenuItemIndex === index ? 0 : -1}
+                        style={{ width: "100%", justifyContent: "flex-start" }}
+                      >
+                        <Icon aria-hidden="true" size={15} />
+                        {item.label}
+                      </button>
+                    </form>
+                  );
+                }
+              })}
+            </div>
           ) : null}
         </div>
       ) : null}

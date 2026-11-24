@@ -1,0 +1,144 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.required {
+  color: var(--coral);
+  margin-left: 2px;
+}
+
+/* 文本输入、select 通用样式 */
+.field input,
+.field select,
+.field textarea {
+  min-height: 40px;
+  padding: 0 12px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 14px;
+  transition: all 140ms ease;
+}
+
+.field textarea {
+  min-height: 100px;
+  padding: 10px 12px;
+  resize: vertical;
+  font-size: 13px;
+}
+
+/* 聚焦态 */
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px var(--green-soft);
+  outline: 0;
+}
+
+/* 错误态 */
+.field input[aria-invalid="true"],
+.field select[aria-invalid="true"],
+.field textarea[aria-invalid="true"] {
+  border-color: var(--coral);
+}
+
+.field input[aria-invalid="true"]:focus,
+.field select[aria-invalid="true"]:focus,
+.field textarea[aria-invalid="true"]:focus {
+  border-color: var(--coral);
+  box-shadow: 0 0 0 3px var(--coral-soft);
+}
+
+/* 禁用态 */
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled {
+  opacity: 0.5;
+  background: var(--surface-soft);
+  cursor: not-allowed;
+}
+
+/* 错误提示 */
+.error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 10px;
+  color: #8b3a2c;
+  background: var(--coral-soft);
+  border-left: 3px solid var(--coral);
+  border-radius: 2px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.errorIcon {
+  flex-shrink: 0;
+  font-size: 14px;
+  margin-top: 1px;
+}
+
+/* 帮助文本 */
+.help {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* 密码输入包装 */
+.passwordWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.passwordWrapper input {
+  width: 100%;
+  padding-right: 44px;
+}
+
+.visibilityToggle {
+  position: absolute;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  background: var(--green);
+  color: #fff;
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 140ms ease;
+}
+
+.visibilityToggle:hover {
+  background: #4a7563;
+}
+
+.visibilityToggle:focus-visible {
+  outline: 3px solid var(--coral);
+  outline-offset: 3px;
+}
+
+.visibilityToggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
