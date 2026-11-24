@@ -1,0 +1,123 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 3px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 140ms ease;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+  position: relative;
+}
+
+/* 尺寸 */
+.size-sm {
+  min-height: 32px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+.size-md {
+  min-height: 40px;
+  padding: 0 16px;
+  font-size: 12px;
+}
+
+.size-lg {
+  min-height: 48px;
+  padding: 0 20px;
+  font-size: 13px;
+}
+
+/* 变体 - primary (绿色) */
+.variant-primary {
+  color: #fff;
+  background: var(--green);
+}
+
+.variant-primary:hover:not(.disabled) {
+  background: #4a7563;
+}
+
+.variant-primary:active:not(.disabled) {
+  background: #3d6052;
+}
+
+/* 变体 - secondary (灰色) */
+.variant-secondary {
+  color: var(--ink-soft);
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+}
+
+.variant-secondary:hover:not(.disabled) {
+  background: var(--line);
+  color: var(--ink);
+}
+
+.variant-secondary:active:not(.disabled) {
+  background: var(--line-strong);
+}
+
+/* 变体 - danger (红色) */
+.variant-danger {
+  color: #fff;
+  background: var(--coral);
+}
+
+.variant-danger:hover:not(.disabled) {
+  background: #c94c38;
+}
+
+.variant-danger:active:not(.disabled) {
+  background: #b53d2a;
+}
+
+/* 变体 - ghost (透明) */
+.variant-ghost {
+  color: var(--ink-soft);
+  background: transparent;
+  border: 1px solid var(--line);
+}
+
+.variant-ghost:hover:not(.disabled) {
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+
+.variant-ghost:active:not(.disabled) {
+  background: var(--line);
+}
+
+/* 禁用状态 */
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 加载动画 */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 600ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 焦点指示 */
+.button:focus-visible {
+  outline: 3px solid var(--coral);
+  outline-offset: 3px;
+}
