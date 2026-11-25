@@ -1,0 +1,490 @@
+/* ==========================================
+   Wikilog 主题背景样式
+   ========================================== */
+
+/* 主容器 */
+.sceneContainer {
+  position: relative;
+  width: 100%;
+  border-radius: 8px;
+  overflow: visible;
+  background: #dff1fb;
+}
+
+/* ==========================================
+   天空和白云
+   ========================================== */
+
+.sky {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 80%;
+  background: linear-gradient(to bottom, #87ceeb 0%, #d8f0f9 50%, #e8f8fd 80%);
+  z-index: 1;
+}
+
+/* 白云基础样式 */
+.cloud {
+  position: absolute;
+  background: white;
+  border-radius: 100px;
+  opacity: 0.85;
+  z-index: 2;
+}
+
+.cloud::before,
+.cloud::after {
+  content: '';
+  position: absolute;
+  background: white;
+  border-radius: 100px;
+}
+
+/* 云 1 */
+.cloud1 {
+  width: 120px;
+  height: 50px;
+  top: 10%;
+  left: 5%;
+  animation: drift 20s infinite ease-in-out;
+}
+
+.cloud1::before {
+  width: 50px;
+  height: 50px;
+  top: -25px;
+  left: 10px;
+}
+
+.cloud1::after {
+  width: 60px;
+  height: 40px;
+  top: -20px;
+  left: 60px;
+}
+
+/* 云 2 */
+.cloud2 {
+  width: 140px;
+  height: 55px;
+  top: 18%;
+  right: 10%;
+  animation: drift 25s infinite ease-in-out reverse;
+}
+
+.cloud2::before {
+  width: 60px;
+  height: 55px;
+  top: -27px;
+  left: 15px;
+}
+
+.cloud2::after {
+  width: 70px;
+  height: 45px;
+  top: -22px;
+  left: 70px;
+}
+
+/* 云 3 */
+.cloud3 {
+  width: 100px;
+  height: 45px;
+  top: 28%;
+  left: 15%;
+  opacity: 0.7;
+  animation: drift 30s infinite ease-in-out;
+}
+
+.cloud3::before {
+  width: 45px;
+  height: 45px;
+  top: -22px;
+  left: 8px;
+}
+
+.cloud3::after {
+  width: 50px;
+  height: 38px;
+  top: -19px;
+  left: 50px;
+}
+
+/* 白云漂浮动画 */
+@keyframes drift {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(50px);
+  }
+}
+
+/* ==========================================
+   草地和装饰
+   ========================================== */
+
+.grass {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 20%;
+  background: linear-gradient(to bottom, #c8e6c9 0%, #a1d08f 85%, #9bc97a 100%);
+  z-index: 3;
+  box-shadow: inset 0 15px 20px rgba(135, 206, 235, 0.1);
+}
+
+.waveBorder {
+  position: absolute;
+  top: -50px;
+  left: 0;
+  width: 100%;
+  height: 100px;
+}
+
+/* ==========================================
+   小花
+   ========================================== */
+
+.flower {
+  position: absolute;
+  z-index: 4;
+}
+
+.flowerStem {
+  position: absolute;
+  width: 2px;
+  background: #7cb342;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+}
+
+.flowerPetal {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #ff9800;
+  border-radius: 50%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.flowerCenter {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #ffd700;
+  border-radius: 50%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* 花 1 */
+.flower1 {
+  bottom: 22%;
+  left: 10%;
+  transform: scaleY(-1);
+}
+
+.flower1 .flowerStem {
+  height: 20px;
+}
+
+.flower1 .flowerPetal:nth-child(1) {
+  top: 0;
+}
+
+.flower1 .flowerPetal:nth-child(2) {
+  top: 4px;
+  left: calc(50% + 6px);
+}
+
+.flower1 .flowerPetal:nth-child(3) {
+  top: 4px;
+  left: calc(50% - 6px);
+}
+
+/* 花 2 */
+.flower2 {
+  bottom: 22%;
+  right: 8%;
+  transform: scaleY(-1);
+}
+
+.flower2 .flowerStem {
+  height: 20px;
+}
+
+.flower2 .flowerPetal:nth-child(1) {
+  top: 0;
+}
+
+.flower2 .flowerPetal:nth-child(2) {
+  top: 3px;
+  left: calc(50% + 5px);
+}
+
+.flower2 .flowerPetal:nth-child(3) {
+  top: 3px;
+  left: calc(50% - 5px);
+}
+
+/* 花 3 */
+.flower3 {
+  bottom: 22%;
+  left: 35%;
+  transform: scaleY(-1);
+}
+
+.flower3 .flowerStem {
+  height: 20px;
+}
+
+.flower3 .flowerPetal:nth-child(1) {
+  top: 0;
+}
+
+.flower3 .flowerPetal:nth-child(2) {
+  top: 4px;
+  left: calc(50% + 6px);
+}
+
+.flower3 .flowerPetal:nth-child(3) {
+  top: 4px;
+  left: calc(50% - 6px);
+}
+
+/* 花 4 */
+.flower4 {
+  bottom: 22%;
+  right: 25%;
+  transform: scaleY(-1);
+}
+
+.flower4 .flowerStem {
+  height: 20px;
+}
+
+.flower4 .flowerPetal:nth-child(1) {
+  top: 0;
+}
+
+.flower4 .flowerPetal:nth-child(2) {
+  top: 3px;
+  left: calc(50% + 5px);
+}
+
+.flower4 .flowerPetal:nth-child(3) {
+  top: 3px;
+  left: calc(50% - 5px);
+}
+
+/* ==========================================
+   小树
+   ========================================== */
+
+.tree {
+  position: absolute;
+  z-index: 4;
+}
+
+.treeTrunk {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 40px;
+  background: #8d6e63;
+}
+
+.treeFoliage {
+  position: absolute;
+  bottom: 35px;
+  left: 50%;
+  width: 50px;
+  height: 50px;
+  background: #558b2f;
+  border-radius: 50% 50% 0 0;
+  transform: translateX(-50%);
+}
+
+.treeFoliage::before {
+  content: '';
+  position: absolute;
+  width: 35px;
+  height: 35px;
+  background: #558b2f;
+  border-radius: 50%;
+  top: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.tree1 {
+  bottom: 15%;
+  left: 25%;
+}
+
+.tree2 {
+  bottom: 15%;
+  right: 20%;
+}
+
+/* ==========================================
+   鹈鹕骑自行车
+   ========================================== */
+
+.pelicanRider {
+  position: absolute;
+  width: 240px;
+  height: 160px;
+  animation: ride 12s infinite linear;
+  bottom: 18%;
+  left: 0;
+  z-index: 5;
+}
+
+@keyframes ride {
+  0% {
+    transform: translateX(0) translateY(0);
+    left: -150px;
+  }
+  50% {
+    transform: translateX(0) translateY(-10px);
+  }
+  100% {
+    transform: translateX(0) translateY(0);
+    left: calc(100% + 150px);
+  }
+}
+
+/* ==========================================
+   响应式设计
+   ========================================== */
+
+@media (max-width: 1024px) {
+  .sceneContainer {
+    /* 平板设备调整 */
+  }
+
+  .flower1,
+  .flower2,
+  .flower3,
+  .flower4 {
+    transform: scaleY(-1) scale(0.8);
+  }
+
+  .tree1,
+  .tree2 {
+    transform: scale(0.85);
+  }
+
+  .pelicanRider {
+    width: 200px;
+    height: 140px;
+    animation: ride 12s infinite linear;
+    bottom: 16%;
+  }
+}
+
+@media (max-width: 768px) {
+  .sceneContainer {
+    /* 手机设备调整 */
+  }
+
+  .cloud1,
+  .cloud3 {
+    display: none;
+  }
+
+  .flower3,
+  .flower4 {
+    display: none;
+  }
+
+  .tree2 {
+    display: none;
+  }
+
+  .pelicanRider {
+    width: 160px;
+    height: 110px;
+    animation: ride 10s infinite linear;
+    bottom: 14%;
+  }
+}
+
+@media (max-width: 480px) {
+  .sceneContainer {
+    /* 超小屏幕 */
+  }
+
+  .cloud2 {
+    display: none;
+  }
+
+  .flower1,
+  .flower2 {
+    transform: scaleY(-1) scale(0.6);
+  }
+
+  .tree1 {
+    transform: scale(0.7);
+  }
+
+  .pelicanRider {
+    width: 120px;
+    height: 85px;
+    animation: ride 10s infinite linear;
+    bottom: 12%;
+  }
+}
+
+/* ==========================================
+   无障碍支持
+   ========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .cloud1,
+  .cloud2,
+  .cloud3 {
+    animation: none;
+  }
+
+  .pelicanRider {
+    animation: none;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+/* ==========================================
+   深色模式支持（可选）
+   ========================================== */
+
+@media (prefers-color-scheme: dark) {
+  .sceneContainer {
+    background: #1a2a35;
+  }
+
+  .sky {
+    background: linear-gradient(to bottom, #2a5a7a 0%, #1a4a6a 50%, #0a3a5a 80%);
+  }
+
+  .cloud {
+    background: #e0e0e0;
+    opacity: 0.6;
+  }
+
+  .cloud::before,
+  .cloud::after {
+    background: #e0e0e0;
+  }
+}
