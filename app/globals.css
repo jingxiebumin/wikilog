@@ -55,11 +55,13 @@
 
 html {
   min-width: 320px;
+  height: 100%;
   background: var(--paper);
 }
 
 body {
   margin: 0;
+  height: 100%;
   color: var(--ink);
   background: var(--paper);
   font-family: var(--sans);
@@ -106,6 +108,8 @@ input:focus-visible {
 .site-frame {
   display: block;
   min-height: 100vh;
+  position: relative;
+  z-index: 10;
 }
 
 .brand {
@@ -2547,3 +2551,168 @@ a:focus-visible {
 .mb-md { margin-bottom: 12px; }
 .mb-lg { margin-bottom: 16px; }
 .mb-xl { margin-bottom: 24px; }
+
+/* ========== 第二阶段：响应式和交互增强 ========== */
+
+/* 1600px 断点 - 大屏幕优化 */
+@media (min-width: 1600px) {
+  .wiki-graph {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .public-article-list {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .home-layout {
+    gap: 60px;
+  }
+
+  .main-content {
+    max-width: 1600px;
+  }
+}
+
+/* 表格卡片模式 - 680px 以下 */
+@media (max-width: 680px) {
+  /* 管理员表格转卡片模式 */
+  .admin-table {
+    display: block;
+    border-collapse: initial;
+  }
+
+  .admin-table thead {
+    display: none;
+  }
+
+  .admin-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .admin-table tr {
+    display: block;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 12px;
+  }
+
+  .admin-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--surface-soft);
+  }
+
+  .admin-table td:last-child {
+    border-bottom: none;
+  }
+
+  .admin-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--ink-soft);
+    min-width: 80px;
+  }
+
+  .admin-table td > * {
+    margin-left: auto;
+  }
+}
+
+/* 加载骨架屏 - pulse 动画 */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.skeleton-line {
+  background: var(--surface-soft);
+  animation: pulse 1.5s ease-in-out infinite;
+  border-radius: 3px;
+}
+
+.skeleton-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 加载旋转动画 */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* 加载条动画 */
+@keyframes loadingBar {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.loading-bar {
+  height: 4px;
+  background: linear-gradient(90deg, transparent, var(--green), transparent);
+  background-size: 200% 100%;
+  animation: loadingBar 1.5s ease-in-out infinite;
+  border-radius: 2px;
+}
+
+/* Toast 动画 */
+@keyframes slideIn {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+}
+
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (max-width: 680px) {
+  .toast-container {
+    bottom: 16px;
+    right: 16px;
+    left: 16px;
+  }
+}
