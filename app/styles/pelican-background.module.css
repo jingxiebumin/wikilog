@@ -155,7 +155,7 @@
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 40%;
+  height: 30%;
   background: linear-gradient(to bottom, #c8e6c9 0%, #a1d08f 85%, #9bc97a 100%);
   z-index: 3;
   box-shadow: inset 0 15px 20px rgba(135, 206, 235, 0.1);
@@ -308,6 +308,56 @@
   left: calc(50% - 5px);
 }
 
+/* 花 5 */
+.flower5 {
+  bottom: 22%;
+  left: 55%;
+  transform: scaleY(-1);
+}
+
+.flower5 .flowerStem {
+  height: 20px;
+}
+
+.flower5 .flowerPetal:nth-child(1) {
+  top: 0;
+}
+
+.flower5 .flowerPetal:nth-child(2) {
+  top: 4px;
+  left: calc(50% + 6px);
+}
+
+.flower5 .flowerPetal:nth-child(3) {
+  top: 4px;
+  left: calc(50% - 6px);
+}
+
+/* 花 6 */
+.flower6 {
+  bottom: 22%;
+  right: 42%;
+  transform: scaleY(-1);
+}
+
+.flower6 .flowerStem {
+  height: 20px;
+}
+
+.flower6 .flowerPetal:nth-child(1) {
+  top: 0;
+}
+
+.flower6 .flowerPetal:nth-child(2) {
+  top: 3px;
+  left: calc(50% + 5px);
+}
+
+.flower6 .flowerPetal:nth-child(3) {
+  top: 3px;
+  left: calc(50% - 5px);
+}
+
 /* ==========================================
    小树
    ========================================== */
@@ -360,32 +410,53 @@
   right: 20%;
 }
 
+.tree3 {
+  bottom: 15%;
+  left: 50%;
+}
+
+.tree4 {
+  bottom: 15%;
+  right: 50%;
+}
+
 /* ==========================================
    鹈鹕骑自行车
    ========================================== */
 
 .pelicanRider {
   position: absolute;
-  width: 240px;
-  height: 160px;
-  animation: ride 12s infinite linear;
+  width: 120px;
+  height: 80px;
+  animation: ride 24s infinite linear;
   bottom: 18%;
   left: 0;
   z-index: 5;
   will-change: transform;
+  transform: scale(0.5);
+  transform-origin: bottom left;
 }
 
 @keyframes ride {
   0% {
-    transform: translateX(0) translateY(0);
+    transform: scale(0.5) translateX(0) translateY(0);
     left: -150px;
   }
   50% {
-    transform: translateX(0) translateY(-10px);
+    transform: scale(0.5) translateX(0) translateY(-10px);
   }
   100% {
-    transform: translateX(0) translateY(0);
+    transform: scale(0.5) translateX(0) translateY(0);
     left: calc(100% + 150px);
+  }
+}
+
+@keyframes pedalRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
   }
 }
 
@@ -397,19 +468,23 @@
   .flower1,
   .flower2,
   .flower3,
-  .flower4 {
+  .flower4,
+  .flower5,
+  .flower6 {
     transform: scaleY(-1) scale(0.8);
   }
 
   .tree1,
-  .tree2 {
+  .tree2,
+  .tree3,
+  .tree4 {
     transform: scale(0.85);
   }
 
   .pelicanRider {
-    width: 200px;
-    height: 140px;
-    animation: ride 12s infinite linear;
+    width: 100px;
+    height: 65px;
+    animation: ride 24s infinite linear;
     bottom: 16%;
   }
 }
@@ -421,18 +496,22 @@
   }
 
   .flower3,
-  .flower4 {
+  .flower4,
+  .flower5,
+  .flower6 {
     display: none;
   }
 
-  .tree2 {
+  .tree2,
+  .tree3,
+  .tree4 {
     display: none;
   }
 
   .pelicanRider {
-    width: 160px;
-    height: 110px;
-    animation: ride 10s infinite linear;
+    width: 80px;
+    height: 55px;
+    animation: ride 24s infinite linear;
     bottom: 14%;
   }
 
@@ -460,9 +539,9 @@
   }
 
   .pelicanRider {
-    width: 120px;
-    height: 85px;
-    animation: ride 10s infinite linear;
+    width: 60px;
+    height: 42px;
+    animation: ride 24s infinite linear;
     bottom: 12%;
   }
 

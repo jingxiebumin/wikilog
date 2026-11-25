@@ -580,7 +580,7 @@ input:focus-visible {
 .main-content {
   flex: 1;
   width: 100%;
-  max-width: 1600px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 clamp(28px, 5vw, 76px);
 }

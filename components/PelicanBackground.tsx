@@ -80,15 +80,19 @@ export const PelicanBackground: React.FC<PelicanBackgroundProps> = ({
           />
         </svg>
 
-        {/* 小花 */}
+        {/* 小花 - 增加到6朵 */}
         <Flower className={`${styles.flower} ${styles.flower1}`} />
         <Flower className={`${styles.flower} ${styles.flower2}`} />
         <Flower className={`${styles.flower} ${styles.flower3}`} />
         <Flower className={`${styles.flower} ${styles.flower4}`} />
+        <Flower className={`${styles.flower} ${styles.flower5}`} />
+        <Flower className={`${styles.flower} ${styles.flower6}`} />
 
-        {/* 小树 */}
+        {/* 小树 - 增加到4棵 */}
         <Tree className={`${styles.tree} ${styles.tree1}`} />
         <Tree className={`${styles.tree} ${styles.tree2}`} />
+        <Tree className={`${styles.tree} ${styles.tree3}`} />
+        <Tree className={`${styles.tree} ${styles.tree4}`} />
       </div>
 
       {/* 鹈鹕骑自行车 */}
@@ -165,8 +169,10 @@ const PelicanBicycle: React.FC<{ className: string }> = ({ className }) => (
       {/* 脚踏板 */}
       <g stroke="#d6342c" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" fill="none">
         <circle cx="80" cy="100" r="12" fill="none" stroke="#d6342c" strokeWidth="3" />
-        <line x1="80" y1="88" x2="80" y2="68" />
-        <line x1="92" y1="100" x2="112" y2="100" />
+        <g style={{ animation: 'pedalRotate 0.8s infinite linear', transformOrigin: '80px 100px' }}>
+          <line x1="80" y1="88" x2="80" y2="68" />
+          <line x1="92" y1="100" x2="112" y2="100" />
+        </g>
       </g>
 
       {/* 车把 */}
