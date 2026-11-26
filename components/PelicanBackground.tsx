@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import styles from '@/app/styles/pelican-background.module.css';
 
 interface PelicanBackgroundProps {
@@ -42,7 +42,30 @@ export const PelicanBackground: React.FC<PelicanBackgroundProps> = ({
   fixed = true,
   className = '',
 }) => {
+  const [rideStyle, setRideStyle] = useState<React.CSSProperties & {
+    '--ride-bottom': string;
+    '--ride-scale': number;
+  }>({
+    '--ride-bottom': 'calc(var(--footer-clearance) + 20px)',
+    '--ride-scale': 0.95,
+  });
   const positionClass = fixed ? styles.fixed : styles.relative;
+
+  const handleRideIteration: React.AnimationEventHandler<SVGSVGElement> = (event) => {
+    // The pedal animation bubbles through the SVG; only the outer ride animation
+    // should choose a new height after a full screen crossing.
+    if (event.target !== event.currentTarget) return;
+
+    const minBottom = 80;
+    const maxBottom = Math.max(minBottom, window.innerHeight * 0.24 - 25);
+    const bottom = minBottom + Math.random() * (maxBottom - minBottom);
+    const depth = (bottom - minBottom) / (maxBottom - minBottom || 1);
+
+    setRideStyle({
+      '--ride-bottom': `${bottom}px`,
+      '--ride-scale': 0.95 - depth * 0.15,
+    });
+  };
 
   return (
     <div
@@ -96,7 +119,11 @@ export const PelicanBackground: React.FC<PelicanBackgroundProps> = ({
       </div>
 
       {/* 鹈鹕骑自行车 */}
-      <PelicanBicycle className={styles.pelicanRider} />
+      <PelicanBicycle
+        className={styles.pelicanRider}
+        onAnimationIteration={handleRideIteration}
+        style={rideStyle}
+      />
     </div>
   );
 };
@@ -127,11 +154,17 @@ const Tree: React.FC<{ className: string }> = ({ className }) => (
 /**
  * 鹈鹕骑自行车 SVG 组件
  */
-const PelicanBicycle: React.FC<{ className: string }> = ({ className }) => (
+const PelicanBicycle: React.FC<{
+  className: string;
+  onAnimationIteration: React.AnimationEventHandler<SVGSVGElement>;
+  style: React.CSSProperties;
+}> = ({ className, onAnimationIteration, style }) => (
   <svg
     className={className}
     viewBox="-20 -10 240 170"
     preserveAspectRatio="xMidYMid meet"
+    onAnimationIteration={onAnimationIteration}
+    style={style}
   >
     {/* 鹈鹕下的阴影 */}
     <ellipse cx="100" cy="135" rx="50" ry="8" fill="rgba(0,0,0,0.2)" />
@@ -166,13 +199,16 @@ const PelicanBicycle: React.FC<{ className: string }> = ({ className }) => (
         <line x1="180" y1="80" x2="140" y2="120" />
       </g>
 
-      {/* 脚踏板 */}
-      <g stroke="#d6342c" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" fill="none">
+      {/* 脚踏板与鹈鹕腿部共用曲柄旋转组 */}
+      <g className={styles.pedalingMechanism} strokeLinecap="round" strokeLinejoin="round">
         <circle cx="80" cy="100" r="12" fill="none" stroke="#d6342c" strokeWidth="3" />
-        <g style={{ animation: 'pedalRotate 0.8s infinite linear', transformOrigin: '80px 100px' }}>
-          <line x1="80" y1="88" x2="80" y2="68" />
-          <line x1="92" y1="100" x2="112" y2="100" />
-        </g>
+        <line x1="80" y1="88" x2="80" y2="68" stroke="#d6342c" strokeWidth="8" />
+        <line x1="92" y1="100" x2="112" y2="100" stroke="#d6342c" strokeWidth="8" />
+
+        <line x1="85" y1="90" x2="82" y2="110" stroke="#d4a574" strokeWidth="3" />
+        <circle cx="82" cy="112" r="3" fill="#d4a574" />
+        <line x1="95" y1="90" x2="98" y2="110" stroke="#d4a574" strokeWidth="3" />
+        <circle cx="98" cy="112" r="3" fill="#d4a574" />
       </g>
 
       {/* 车把 */}
@@ -209,16 +245,6 @@ const PelicanBicycle: React.FC<{ className: string }> = ({ className }) => (
         <line x1="170" y1="12" x2="168" y2="22" stroke="#2c3e50" strokeWidth="1" />
       </g>
 
-      {/* 腿部 */}
-      <g>
-        <line x1="85" y1="90" x2="82" y2="110" stroke="#d4a574" strokeWidth="3" strokeLinecap="round" />
-        <circle cx="82" cy="112" r="3" fill="#d4a574" />
-      </g>
-
-      <g>
-        <line x1="95" y1="90" x2="98" y2="110" stroke="#d4a574" strokeWidth="3" strokeLinecap="round" />
-        <circle cx="98" cy="112" r="3" fill="#d4a574" />
-      </g>
     </g>
   </svg>
 );

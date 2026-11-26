@@ -17,7 +17,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="zh-CN">
       <body>
-        <PelicanBackground opacity={0.25} fixed={true} />
+        <PelicanBackground opacity={0.42} fixed={true} />
         <SiteShell>{children}</SiteShell>
       </body>
     </html>
