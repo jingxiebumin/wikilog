@@ -1,3 +1,17 @@
+/*
+ * Tailwind CSS v4 is enabled without Preflight. The existing stylesheet owns
+ * the document reset, typography, SVG sizing, and animation behavior, so
+ * importing preflight here would change the current page appearance.
+ */
+@import "tailwindcss/theme.css";
+@import "tailwindcss/utilities.css";
+
+/* Scan every app route, layout, component, and shared source file for classes. */
+@source "../app";
+@source "../components";
+@source "../lib";
+@source "../*.{ts,tsx}";
+
 :root {
   color-scheme: light;
 

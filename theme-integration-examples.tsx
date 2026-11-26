@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { ThemeBackground } from '@/components/ThemeBackground';
+import { ThemeBackground } from '@/ThemeBackground';
 
 /**
  * 博客首页示例 - ThemeBackground 作为底部装饰
