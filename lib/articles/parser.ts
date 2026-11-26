@@ -142,7 +142,7 @@ function parseBody(markdown: string, imageAssets: Record<string, string>): Artic
     const heading = /^(#{2,3})\s+(.+)$/.exec(trimmed);
     if (heading) {
       flushParagraph(); flushList();
-      blocks.push({ type: "heading", text: heading[2].trim() });
+      blocks.push({ type: "heading", text: heading[2].trim(), level: heading[1].length as 2 | 3 });
       continue;
     }
     const item = /^[-*+]\s+(.+)$/.exec(trimmed);

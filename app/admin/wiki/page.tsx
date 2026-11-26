@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { AdminWikiManager } from "@/components/admin-wiki-manager";
-import { AdminWorkspaceNav } from "@/components/admin-workspace-nav";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 import { AuthError } from "@/lib/auth/errors";
 import { requireSession } from "@/lib/auth/service";
 import { adminArticleList } from "@/lib/articles/service";
@@ -23,10 +23,8 @@ export default async function AdminWikiPage() {
     .map((article) => ({ id: article.id, slug: article.slug, title: article.title, versionNumber: article.versionNumber }));
 
   return (
-    <section className="page account-page admin-section-page">
-      <AdminWorkspaceNav active="/admin/wiki" />
-      <div className="page-heading"><p className="eyebrow"><span className="eyebrow-mark" />管理员设置</p><h1>Wiki 管理</h1><p>维护主题页面、文章来源和已审核关系。</p></div>
+    <AdminLayout active="/admin/wiki" description="维护主题页面、文章来源和已审核关系。" title="Wiki 管理">
       <AdminWikiManager initialPages={pages} publishedArticles={publishedArticles} />
-    </section>
+    </AdminLayout>
   );
 }

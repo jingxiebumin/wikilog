@@ -176,7 +176,7 @@ export function AdminWikiManager({ initialPages, publishedArticles }: {
     <div className="admin-article-manager">
       <div className="admin-article-actions">
         <button onClick={startNewPage} type="button">创建 Wiki 页面</button>
-        <button className="button-secondary" onClick={() => setMergeOpen(true)} type="button">合并页面</button>
+        <button className="button-secondary rounded-lg" onClick={() => setMergeOpen(true)} type="button">合并页面</button>
       </div>
       {error ? <p className="form-error" role="alert">{error}</p> : null}
       {notice ? <p className="account-notice" role="status">{notice}</p> : null}
@@ -184,12 +184,12 @@ export function AdminWikiManager({ initialPages, publishedArticles }: {
       <section className="admin-article-list">
         <h2>Wiki 页面</h2>
         {pages.length === 0 ? <p className="form-help">暂无 Wiki 页面。</p> : pages.map((page) => (
-          <article className="admin-article-row" key={page.id}>
+          <article className="admin-article-row rounded-xl bg-white/65 border border-zinc-200/80 p-4 hover:border-[#1B4332]/30 transition-colors" key={page.id}>
             <div className="admin-article-meta"><span>{page.slug}</span><span>{page.state === "merged" ? `已合并至 ${page.redirectTo ?? "目标主题"}` : page.current?.status === "published" ? "当前公开" : "尚未公开"}</span></div>
             <h3>{page.current?.title ?? page.versions.find(({ status }) => status === "draft")?.title ?? page.slug}</h3>
             <div className="admin-article-actions">
-              {page.state === "active" ? <button className="button-secondary" disabled={busy} onClick={() => void editPage(page)} type="button">编辑</button> : null}
-              {page.current?.status === "published" ? <button className="button-secondary" disabled={busy} onClick={() => {
+              {page.state === "active" ? <button className="button-secondary rounded-lg" disabled={busy} onClick={() => void editPage(page)} type="button">编辑</button> : null}
+              {page.current?.status === "published" ? <button className="button-secondary rounded-lg" disabled={busy} onClick={() => {
                 const current = page.versions.find(({ status }) => status === "published");
                 if (current) setSelectedPreview({ slug: page.slug, version: current });
               }} type="button">查看公开内容</button> : null}

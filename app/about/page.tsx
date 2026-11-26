@@ -12,18 +12,20 @@ export default function AboutPage() {
         <p className="eyebrow"><span className="eyebrow-mark" /> 关于 / ABOUT</p>
         <h1>写下过程，<br /><em>再回头看答案。</em></h1>
       </div>
-      <div className="about-layout">
-        <div className="about-monogram" aria-hidden="true">
-          <span>W</span><MoveDownRight size={24} strokeWidth={1.4} />
-          <div className="monogram-caption"><span>WIKILOG</span><span>EST. 2026</span></div>
-        </div>
-        <div className="about-copy">
-          <p className="about-lead">这里记录做软件时遇到的问题、做过的取舍，以及那些值得再验证一次的想法。</p>
-          <p>文章围绕工程实践、数据与检索、系统设计展开。内容尽量保留上下文与依据，方便日后复用，也欢迎读者指出不准确之处。</p>
-          <p>这个站点从一份简单的技术日志开始。内容会随着实际项目继续补充和修订。</p>
-          <div className="contact-block">
-            <span className="contact-label">联系作者</span>
-            <a href={`mailto:${email}`}><Mail aria-hidden="true" size={17} />{email}<ArrowUpRight aria-hidden="true" size={15} /></a>
+      <div className="about-content-card rounded-2xl border border-white/65 bg-white/75 p-8 shadow-sm backdrop-blur-xl md:p-12">
+        <div className="about-layout grid items-start gap-8 md:grid-cols-[260px_1fr]">
+          <div className="about-monogram" aria-hidden="true">
+            <span>W</span><MoveDownRight size={24} strokeWidth={1.4} />
+            <div className="monogram-caption"><span>WIKILOG</span><span>EST. 2026</span></div>
+          </div>
+          <div className="about-copy">
+            <p className="about-lead">这里记录做软件时遇到的问题、做过的取舍，以及那些值得再验证一次的想法。</p>
+            <p>文章围绕工程实践、数据与检索、系统设计展开。内容尽量保留上下文与依据，方便日后复用，也欢迎读者指出不准确之处。</p>
+            <p>这个站点从一份简单的技术日志开始。内容会随着实际项目继续补充和修订。</p>
+            <div className="contact-block">
+              <span className="contact-label">联系作者</span>
+              <a className="text-[#1B4332]" href={`mailto:${email}`}><Mail aria-hidden="true" size={17} />{email}<ArrowUpRight aria-hidden="true" size={15} /></a>
+            </div>
           </div>
         </div>
       </div>

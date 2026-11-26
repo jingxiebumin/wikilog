@@ -51,7 +51,7 @@ function CreateReader({ onCreated }: { onCreated: () => void }) {
       <h2>创建读者</h2>
       <label className="form-field"><span>登录邮箱</span><input autoComplete="email" onChange={(event) => setEmail(event.target.value)} placeholder="reader@example.com" required type="email" value={email} /></label>
       {error ? <p className="form-error" role="alert">{error}</p> : null}
-      <button disabled={busy} type="submit">{busy ? "创建中…" : "创建账号"}</button>
+      <button className="create-reader-button rounded-lg bg-emerald-900/10 text-[#1B4332] hover:bg-[#1B4332] hover:text-[#ECFDF5]" disabled={busy} type="submit">{busy ? "创建中…" : "创建账号"}</button>
       <p className="form-help">初始密码为 123456，首次登录时必须修改。</p>
     </form>
   );
@@ -176,9 +176,9 @@ export function AdminReaderManager({ initialReaders, initialSearch, includeDelet
       <section aria-label="读者账号列表" className="admin-reader-list">
         <form className="admin-reader-list-heading" onSubmit={searchReaders}>
           <h2>读者账号</h2>
-          <label className="form-field"><span>邮箱或昵称</span><input onChange={(event) => setSearch(event.target.value)} type="search" value={search} /></label>
-          <label className="form-field"><span>账号范围</span><select onChange={(event) => setFilter(event.target.value as ReaderFilter)} value={filter}><option value="active">正常账号</option><option value="deleted">已删除账号</option></select></label>
-          <button type="submit">查询</button>
+          <label className="form-field"><span>邮箱或昵称</span><input className="rounded-lg focus:border-[#1B4332] focus:ring-2 focus:ring-[#1B4332]/20 focus:outline-none" onChange={(event) => setSearch(event.target.value)} type="search" value={search} /></label>
+          <label className="form-field"><span>账号范围</span><select className="rounded-lg focus:border-[#1B4332] focus:ring-2 focus:ring-[#1B4332]/20 focus:outline-none" onChange={(event) => setFilter(event.target.value as ReaderFilter)} value={filter}><option value="active">正常账号</option><option value="deleted">已删除账号</option></select></label>
+          <button className="reader-search-button rounded-lg bg-[#1B4332] text-[#ECFDF5]" type="submit">查询</button>
         </form>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         {notice ? <p className="account-notice" role="status">{notice}</p> : null}
@@ -193,7 +193,7 @@ export function AdminReaderManager({ initialReaders, initialSearch, includeDelet
                 {reader.delFlag ? <button disabled={busyId === reader.id} onClick={() => void restore(reader)} type="button">恢复</button> : <>
                   <button onClick={() => setEditing(reader)} type="button">编辑</button>
                   <button disabled={busyId === reader.id} onClick={() => void resetPassword(reader)} type="button">重置密码</button>
-                  <button className="danger-action" onClick={() => { setDeleteReason(""); setDeleting(reader); }} type="button">删除</button>
+                  <button className="table-delete-button bg-white border border-zinc-200 text-zinc-600 hover:border-rose-300 hover:text-rose-700 hover:bg-rose-50/70 rounded-lg px-2.5 py-1 text-xs transition-colors" onClick={() => { setDeleteReason(""); setDeleting(reader); }} type="button">删除</button>
                 </>}
               </td>
             </tr>)}</tbody>

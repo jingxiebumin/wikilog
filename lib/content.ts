@@ -7,7 +7,7 @@ export type Category = {
 
 export type ArticleBlock =
   | { type: "paragraph"; text: string }
-  | { type: "heading"; text: string }
+  | { type: "heading"; text: string; level?: 2 | 3 }
   | { type: "list"; items: string[] }
   | { type: "code"; language: string; code: string }
   | { type: "image"; src: string; alt: string };

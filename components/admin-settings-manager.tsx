@@ -100,7 +100,7 @@ export function AdminSettingsManager({ initialTaxonomy }: { initialTaxonomy: Tax
       {notice ? <p className="account-notice" role="status">{notice}</p> : null}
       <div className="admin-reader-toolbar">
         <p className="form-help">{selectedType === "category" ? "每篇文章选择一个分类。" : "每篇文章最多选择两个标签。"}</p>
-        <button disabled={busy} onClick={openCreate} type="button">添加{typeLabel}</button>
+        <button className="add-taxonomy-button rounded-lg bg-[#1B4332] hover:bg-[#143326] text-[#ECFDF5] px-4 py-2 text-sm font-medium" disabled={busy} onClick={openCreate} type="button">添加{typeLabel}</button>
       </div>
       <div className="admin-reader-table-wrap">
         <table className="admin-reader-table">
@@ -110,8 +110,8 @@ export function AdminSettingsManager({ initialTaxonomy }: { initialTaxonomy: Tax
               <tr key={item.id}>
                 <td>{item.name}</td><td><code>{item.slug}</code></td>
                 <td><div className="admin-reader-actions">
-                  <button className="button-secondary" disabled={busy} onClick={() => openEdit(item)} type="button">改名</button>
-                  <button className="button-secondary" disabled={busy} onClick={() => void remove(item)} type="button">删除</button>
+                  <button className="taxonomy-edit-button rounded-lg" disabled={busy} onClick={() => openEdit(item)} type="button">改名</button>
+                  <button className="taxonomy-delete-button bg-white border border-zinc-200 text-zinc-600 hover:border-rose-300 hover:text-rose-700 hover:bg-rose-50/70 rounded-lg px-2.5 py-1 text-xs" disabled={busy} onClick={() => void remove(item)} type="button">删除</button>
                 </div></td>
               </tr>
             ))}

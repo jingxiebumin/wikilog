@@ -93,7 +93,7 @@ export function AdminQa({
     } finally { setBusy(false); }
   }
 
-  if (!enabled) return <p className="qa-disabled" role="status">问答功能当前关闭。</p>;
+  if (!enabled) return <p className="qa-disabled p-5 rounded-xl bg-emerald-950/[0.03] border border-zinc-200/70 text-sm text-zinc-600" role="status">问答功能当前关闭。</p>;
 
   return (
     <div className="admin-qa">

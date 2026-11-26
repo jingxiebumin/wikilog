@@ -11,9 +11,9 @@ const links = [
 
 export function AdminWorkspaceNav({ active }: { active?: string }) {
   return (
-    <nav aria-label="管理员设置" className="admin-workspace-nav">
+    <nav aria-label="管理员设置" className="flex flex-col gap-1.5">
       {links.map(({ href, label, icon: Icon }) => (
-        <Link aria-current={active === href ? "page" : undefined} href={href} key={href}>
+        <Link aria-current={active === href ? "page" : undefined} className={`inline-flex min-h-10 items-center gap-2 px-3 text-xs ${active === href ? "bg-emerald-900/12 !text-[#1B4332] font-semibold rounded-xl" : "text-zinc-700 hover:bg-emerald-900/10 hover:text-[#1B4332] rounded-xl transition-colors"}`} href={href} key={href}>
           <Icon aria-hidden="true" size={15} />{label}
         </Link>
       ))}

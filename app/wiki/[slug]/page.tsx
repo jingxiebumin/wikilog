@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { WikiTopicContent } from "@/components/wiki-topic-content";
+import { GlassCard } from "@/components/ui/GlassCard";
 import { getPublishedWikiPage } from "@/lib/wiki/service";
 import styles from "../wiki.module.css";
 
@@ -18,5 +19,5 @@ export default async function WikiTopicPage({ params }: WikiTopicPageProps) {
   const page = await getPublishedWikiPage(slug);
   if (!page) notFound();
   if (page.redirectTo) redirect(page.redirectTo);
-  return <div className={`page ${styles.page}`}><WikiTopicContent page={page} /></div>;
+  return <div className={`page ${styles.page}`}><GlassCard className="mx-auto max-w-[1000px] p-8 md:p-10"><WikiTopicContent page={page} /></GlassCard></div>;
 }

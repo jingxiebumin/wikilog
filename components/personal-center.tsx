@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { CircleUserRound } from "lucide-react";
 import { EmailForm, PasswordForm } from "@/components/account-forms";
+import { GlassCard } from "@/components/ui/GlassCard";
 
 type Profile = {
   id: string;
@@ -143,8 +144,10 @@ export function PersonalCenter({ initialProfile, activeTab = "basic", forcePassw
   }
 
   return (
-    <section className="personal-center">
-      <aside className="personal-profile-summary">
+    <section className="personal-center-shell">
+      <GlassCard className="p-8" variant="admin">
+        <div className="personal-center">
+          <aside className="personal-profile-summary">
         <button
           ref={avatarButtonRef}
           aria-label="更换头像"
@@ -174,8 +177,8 @@ export function PersonalCenter({ initialProfile, activeTab = "basic", forcePassw
           <div><dt>角色</dt><dd>{profile.role === "admin" ? "管理员" : "读者"}</dd></div>
           <div><dt>创建日期</dt><dd>{new Date(profile.createdAt).toLocaleDateString("zh-CN")}</dd></div>
         </dl>
-      </aside>
-      <div className="personal-profile-editor">
+          </aside>
+          <div className="personal-profile-editor">
         {!forcePasswordChange ? <div aria-label="个人中心设置" className="personal-tabs" role="tablist">
           <button aria-selected={tab === "basic"} onClick={() => setTab("basic")} role="tab" type="button">基础信息</button>
           <button aria-selected={tab === "email"} onClick={() => setTab("email")} role="tab" type="button">修改邮箱</button>
@@ -185,14 +188,16 @@ export function PersonalCenter({ initialProfile, activeTab = "basic", forcePassw
           <form className="account-form personal-profile-form" onSubmit={saveBasics}>
             {error ? <p className="form-error" role="alert">{error}</p> : null}
             {notice ? <p className="account-notice" role="status">{notice}</p> : null}
-            <label className="form-field" htmlFor="profile-display-name"><span>昵称</span><input id="profile-display-name" maxLength={80} onChange={(event) => setDisplayName(event.target.value)} required value={displayName} /></label>
-            <label className="form-field" htmlFor="profile-phone"><span>手机号</span><input autoComplete="tel" id="profile-phone" onChange={(event) => setPhone(event.target.value)} placeholder="中国大陆 11 位号码或 + 国家区号" value={phone} /></label>
+            <label className="form-field" htmlFor="profile-display-name"><span>昵称</span><input className="rounded-lg focus:border-[#1B4332] focus:ring-2 focus:ring-[#1B4332]/20 focus:outline-none" id="profile-display-name" maxLength={80} onChange={(event) => setDisplayName(event.target.value)} required value={displayName} /></label>
+            <label className="form-field" htmlFor="profile-phone"><span>手机号</span><input className="rounded-lg focus:border-[#1B4332] focus:ring-2 focus:ring-[#1B4332]/20 focus:outline-none" autoComplete="tel" id="profile-phone" onChange={(event) => setPhone(event.target.value)} placeholder="中国大陆 11 位号码或 + 国家区号" value={phone} /></label>
             <fieldset className="profile-gender-field"><legend>性别</legend>{([["male", "男"], ["female", "女"], ["other", "其他"], ["undisclosed", "不愿透露"]] as const).map(([value, label]) => <label key={value}><input checked={gender === value} name="gender" onChange={() => setGender(value)} type="radio" value={value} />{label}</label>)}</fieldset>
-            <label className="form-field" htmlFor="profile-introduction"><span>个人介绍</span><textarea id="profile-introduction" maxLength={500} onChange={(event) => setIntroduction(event.target.value)} rows={5} value={introduction} /></label>
-            <div className="profile-form-actions"><button disabled={submitting} type="submit">{submitting ? "保存中…" : "保存"}</button><button className="button-secondary" disabled={submitting} onClick={resetBasics} type="button">重置</button></div>
+            <label className="form-field" htmlFor="profile-introduction"><span>个人介绍</span><textarea className="rounded-lg focus:border-[#1B4332] focus:ring-2 focus:ring-[#1B4332]/20 focus:outline-none" id="profile-introduction" maxLength={500} onChange={(event) => setIntroduction(event.target.value)} rows={5} value={introduction} /></label>
+            <div className="profile-form-actions"><button className="profile-save-button rounded-lg bg-[#1B4332] text-[#ECFDF5] hover:bg-[#143326]" disabled={submitting} type="submit">{submitting ? "保存中…" : "保存"}</button><button className="button-secondary" disabled={submitting} onClick={resetBasics} type="button">重置</button></div>
           </form>
         ) : tab === "email" ? <EmailForm currentEmail={profile.email} /> : <PasswordForm requireDisplayName={forcePasswordChange && !profile.displayName} />}
-      </div>
+          </div>
+        </div>
+      </GlassCard>
       {avatarOpen ? (
         <dialog
           ref={avatarDialogRef}

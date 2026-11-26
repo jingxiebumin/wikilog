@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, Clock3, Hash } from "lucide-react";
-import { ArticleBody } from "@/components/article-body";
+import { ArticleBody, getArticleHeadings } from "@/components/article-body";
+import { ArticleToc } from "@/components/article-toc";
 import { ArticleCard } from "@/components/article-card";
 import { FavoriteButton } from "@/components/favorite-button";
 import { getCurrentSession } from "@/lib/auth/service";
@@ -31,9 +31,24 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     listTags(),
   ]);
   const tagNames = new Map(tagOptions.map(({ slug, name }) => [slug, name]));
-  const relatedArticles = allArticles
+  const relatedArticles = [...new Map(allArticles
     .filter((item) => item.slug !== article.slug && item.category === article.category)
+    .map((item) => [item.slug, item])).values()]
     .slice(0, 2);
+  const recommendedArticles = [...new Map(allArticles
+    .filter((item) => item.slug !== article.slug)
+    .map((item) => [item.slug, item])).values()]
+    .sort((left, right) => {
+      const relevance = (candidate: typeof article) =>
+        Number(candidate.category === article.category) * 2
+        + candidate.tags.filter((tag) => article.tags.includes(tag)).length;
+      return relevance(right) - relevance(left) || right.publishedAt.localeCompare(left.publishedAt);
+    })
+    .slice(0, 5);
+  const bodyBlocks = article.body[0]?.type === "heading" && article.body[0].text === article.title
+    ? article.body.slice(1)
+    : article.body;
+  const headings = getArticleHeadings(bodyBlocks);
   const session = await getCurrentSession();
   const qaSettings = session?.role === "admin" ? getAdminQaSettings() : { enabled: false };
   const favorite = session && !session.passwordResetRequired
@@ -44,7 +59,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     <div className="page article-page">
       <Link className="back-link" href="/"><ArrowLeft aria-hidden="true" size={15} />所有文章</Link>
       <article>
-        <header className="article-header">
+        <header className="article-header pb-8">
           <p className="eyebrow"><span className={`eyebrow-dot tone-${category?.tone ?? "blue"}`} /> {category?.name ?? "文章"} / ARTICLE</p>
           <h1>{article.title}</h1>
           <p className="article-deck">{article.summary}</p>
@@ -63,22 +78,37 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
           </div>
         </header>
 
-        <figure className="article-hero-figure">
-          <Image alt="" className={`article-hero-image cover-${article.cover}`} height={620} priority src={`/covers/${article.cover}.svg`} width={1200} />
-          <figcaption><span>W / {article.publishedAt.slice(0, 4)}</span><span>技术手记 · {category?.name}</span></figcaption>
-        </figure>
-
-        <div className="article-reading-layout">
-          <aside className="article-aside">
-            <span className="article-aside-label">本文关键词</span>
-            <div className="article-tag-list">
-              {article.tags.map((tag) => <Link href={`/tags/${tag}`} key={tag}><Hash aria-hidden="true" size={12} />{tagNames.get(tag) ?? tag}</Link>)}
+        <div className="article-reading-layout mx-auto grid max-w-[1200px] grid-cols-1 items-start gap-6 px-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+          <aside className="article-aside sticky top-24 self-start space-y-4">
+            <div className="space-y-4 rounded-2xl border border-white/65 bg-white/75 p-5 backdrop-blur-xl">
+              <ArticleToc headings={headings} />
+              <div className="article-aside-keywords">
+                <span className="article-aside-label">本文关键词</span>
+                <div className="article-tag-list">
+                  {article.tags.map((tag) => <Link href={`/tags/${tag}`} key={tag}><Hash aria-hidden="true" size={12} />{tagNames.get(tag) ?? tag}</Link>)}
+                </div>
+              </div>
+              <Link className="inline-flex items-center gap-1 text-zinc-600 transition-colors hover:text-[#1B4332]" href="/categories/engineering" rel="noopener noreferrer" target="_blank">
+                更多工程实践 <ArrowUpRight aria-hidden="true" size={14} />
+              </Link>
             </div>
-            <Link className="article-aside-category" href={`/categories/${article.category}`}>
-              更多{category?.name} <ArrowUpRight aria-hidden="true" size={14} />
-            </Link>
+            <section className="rounded-2xl border border-white/65 bg-white/75 p-5 shadow-sm backdrop-blur-xl" aria-labelledby="article-recommendations-heading">
+              <h2 className="mb-3 text-sm font-semibold text-gray-900" id="article-recommendations-heading">相关推荐</h2>
+              <ul className="m-0 list-none p-0">
+                {recommendedArticles.map((item) => (
+                  <li key={item.slug}>
+                    <Link className="group block border-b border-zinc-200/60 py-2 last:border-none" href={`/articles/${item.slug}`} rel="noopener noreferrer" target="_blank">
+                      <span className="line-clamp-2 text-[13px] leading-snug text-zinc-700 transition-colors group-hover:text-[#1B4332]">{item.title}</span>
+                      <time className="mt-1 block text-[11px] text-zinc-400" dateTime={item.publishedAt}>{item.publishedAt.replaceAll("-", ".")}</time>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
           </aside>
-          <ArticleBody blocks={article.body} />
+          <div className="article-reading-card rounded-2xl border border-white/65 bg-white/75 p-8 shadow-sm backdrop-blur-xl md:p-10">
+            <ArticleBody blocks={bodyBlocks} />
+          </div>
         </div>
       </article>
 
@@ -86,9 +116,9 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         <section className="related-section" aria-labelledby="related-heading">
           <div className="section-heading">
             <div><p className="section-index">继续阅读 / {category?.name}</p><h2 id="related-heading">相关记录</h2></div>
-            <Link className="text-arrow" href={`/categories/${article.category}`}>查看分类 <ArrowUpRight aria-hidden="true" size={15} /></Link>
+            <Link className="inline-flex items-center gap-1 text-zinc-600 transition-colors hover:text-[#1B4332]" href={`/categories/${article.category}`} rel="noopener noreferrer" target="_blank">查看分类 <ArrowUpRight aria-hidden="true" size={15} /></Link>
           </div>
-          <div className="article-grid">{relatedArticles.map((item) => <ArticleCard article={item} key={item.slug} />)}</div>
+          <div className="article-grid">{relatedArticles.map((item) => <ArticleCard article={item} key={item.slug} variant="compact" />)}</div>
         </section>
       )}
     </div>

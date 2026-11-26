@@ -3,7 +3,7 @@ import { AuthError } from "@/lib/auth/errors";
 import { requireSession } from "@/lib/auth/service";
 import { getAdminQaSettings, getAdminQaSession, listAdminQaSessions } from "@/lib/qa";
 import { AdminQa } from "@/components/admin-qa";
-import { AdminWorkspaceNav } from "@/components/admin-workspace-nav";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 
 export const dynamic = "force-dynamic";
 
@@ -19,10 +19,8 @@ export default async function AdminAiPage() {
   const sessions = settings.enabled ? await listAdminQaSessions(operator) : [];
   const firstSession = sessions[0] ? await getAdminQaSession(operator, sessions[0].id) : undefined;
   return (
-    <section className="page account-page admin-section-page">
-      <AdminWorkspaceNav active="/admin/ai" />
-      <div className="page-heading"><p className="eyebrow"><span className="eyebrow-mark" />管理员设置</p><h1>AI 设置与问答</h1></div>
+    <AdminLayout active="/admin/ai" description="管理问答功能和管理员会话。" title="AI 设置与问答">
       <AdminQa {...settings} initialMessages={firstSession?.messages ?? []} initialSessions={sessions} />
-    </section>
+    </AdminLayout>
   );
 }

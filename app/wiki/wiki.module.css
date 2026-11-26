@@ -75,7 +75,7 @@
 }
 
 .topic {
-  max-width: 780px;
+  max-width: none;
   margin: 0 auto;
 }
 
@@ -90,6 +90,12 @@
   font-size: 32px;
   line-height: 1.3;
   overflow-wrap: anywhere;
+}
+
+.topicHeader :global(.eyebrow-dot) {
+  background: #1b4332;
+  border-radius: 1px;
+  transform: rotate(45deg);
 }
 
 .topicBody {
@@ -135,4 +141,12 @@
 
 .topicLinks a:hover {
   color: #1b4332;
+}
+
+.sourceSection {
+  margin-top: 18px;
+  padding: 16px;
+  background: rgb(2 44 34 / 4%);
+  border: 1px solid rgb(6 95 70 / 10%);
+  border-radius: 12px;
 }

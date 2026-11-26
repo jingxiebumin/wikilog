@@ -3,7 +3,7 @@ import { AuthError } from "@/lib/auth/errors";
 import { requireSession } from "@/lib/auth/service";
 import { listAdminTaxonomy } from "@/lib/admin-settings/service";
 import { AdminSettingsManager } from "@/components/admin-settings-manager";
-import { AdminWorkspaceNav } from "@/components/admin-workspace-nav";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +17,8 @@ export default async function AdminSettingsPage() {
   }
   const taxonomy = await listAdminTaxonomy(session);
   return (
-    <section className="page account-page admin-section-page">
-      <AdminWorkspaceNav active="/admin/settings" />
-      <div className="page-heading"><p className="eyebrow"><span className="eyebrow-mark" />管理员设置</p><h1>系统设置</h1><p>维护文章使用的分类和标签。</p></div>
+    <AdminLayout active="/admin/settings" description="维护文章使用的分类和标签。" title="系统设置">
       <AdminSettingsManager initialTaxonomy={taxonomy} />
-    </section>
+    </AdminLayout>
   );
 }
