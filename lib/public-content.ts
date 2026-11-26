@@ -26,6 +26,9 @@ import {
 
 export type { Article, ArticleBlock, Category, SearchResult } from "@/lib/content";
 
+const uniqueArticles = <T extends { slug: string }>(articles: T[]) =>
+  Array.from(new Map(articles.map((article) => [article.slug, article])).values());
+
 export async function listCategories() {
   return hasDatabase ? listCategoriesFromDatabase() : categories;
 }
@@ -44,16 +47,21 @@ export async function getTagBySlug(slug: string) {
 }
 
 export async function listPublishedArticles() {
-  return hasDatabase ? listPublishedArticlesFromDatabase() : publishedArticles();
+  const articles = hasDatabase ? await listPublishedArticlesFromDatabase() : publishedArticles();
+  return uniqueArticles(articles);
 }
 
 export async function listPublishedArticlePage(category: string, limit = 10, offset = 0) {
-  if (hasDatabase) return listPublishedArticlePageFromDatabase(category, limit, offset);
+  if (hasDatabase) {
+    const page = await listPublishedArticlePageFromDatabase(category, limit, offset);
+    return { ...page, articles: uniqueArticles(page.articles) };
+  }
   const allArticles = publishedArticles();
   const filtered = category === "all" ? allArticles : allArticles.filter((article) => article.category === category);
   const safeLimit = Math.max(1, Math.min(Math.floor(limit) || 10, 50));
   const safeOffset = Math.max(0, Math.floor(offset) || 0);
-  return { articles: filtered.slice(safeOffset, safeOffset + safeLimit), totalCount: filtered.length };
+  const articles = uniqueArticles(filtered);
+  return { articles: articles.slice(safeOffset, safeOffset + safeLimit), totalCount: articles.length };
 }
 
 export async function getPublishedArticle(slug: string) {

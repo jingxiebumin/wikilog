@@ -17,7 +17,7 @@
 }
 
 .graphScroll:focus-visible {
-  outline: 3px solid var(--coral);
+  outline: 3px solid rgb(27 67 50 / 30%);
   outline-offset: 3px;
 }
 
@@ -62,10 +62,10 @@
   flex: 0 0 9px;
   width: 9px;
   aspect-ratio: 1;
-  background: var(--coral);
+  background: #1b4332;
   border: 2px solid var(--paper);
   border-radius: 50%;
-  outline: 1px solid var(--coral);
+  outline: 1px solid #1b4332;
 }
 
 .empty {
@@ -134,5 +134,5 @@
 }
 
 .topicLinks a:hover {
-  color: var(--coral);
+  color: #1b4332;
 }

@@ -104,7 +104,7 @@ export function SiteNavigation({
         return (
           <Link
             aria-current={active ? "page" : undefined}
-            className="site-nav-link"
+            className={`site-nav-link transition-colors ${active ? "text-[#1B4332] border-[#1B4332]" : ""}`}
             href={href}
             key={href}
           >
@@ -154,6 +154,7 @@ export function SiteNavigation({
                   const Icon = item.icon;
                   return (
                     <Link
+                      className="hover:bg-emerald-900/10 hover:text-[#1B4332] focus-visible:ring-2 focus-visible:ring-[#1B4332]/30 focus-visible:outline-none"
                       key={item.href}
                       href={item.href}
                       onClick={() => setAccountMenuOpen(false)}
@@ -177,6 +178,7 @@ export function SiteNavigation({
                       style={{ width: "100%" }}
                     >
                       <button
+                        className="hover:bg-emerald-900/10 hover:text-[#1B4332] focus-visible:ring-2 focus-visible:ring-[#1B4332]/30 focus-visible:outline-none"
                         type="submit"
                         role="menuitem"
                         ref={(el) => {

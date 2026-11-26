@@ -23,7 +23,7 @@ export function ArticleCard({ article, summary }: { article: Article; summary?: 
           <span className={`category-label tone-${category?.tone ?? "blue"}`}>{category?.name ?? "未分类"}</span>
           <time dateTime={article.publishedAt}>{article.publishedAt.replaceAll("-", ".")}</time>
         </div>
-        <h3><Link href={`/articles/${article.slug}`}>{article.title}</Link></h3>
+        <h3><Link className="text-[#111827] visited:text-[#111827] hover:text-[#1B4332] transition-colors" href={`/articles/${article.slug}`}>{article.title}</Link></h3>
         <p>{summary ?? article.summary}</p>
         <div className="article-card-bottom">
           <span className="read-time"><Clock3 aria-hidden="true" size={14} />{article.readMinutes} 分钟</span>
