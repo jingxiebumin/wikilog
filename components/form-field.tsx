@@ -3,14 +3,19 @@
 import React, {
   ReactNode,
   InputHTMLAttributes,
-  TextareaHTMLAttributes,
-  SelectHTMLAttributes,
   forwardRef,
   ReactElement,
   cloneElement,
   isValidElement,
 } from 'react';
 import styles from './form-field.module.css';
+
+type FormFieldChildProps = {
+  id?: string;
+  name?: string;
+  'aria-invalid'?: string;
+  'aria-describedby'?: string;
+};
 
 interface FormFieldProps {
   label?: ReactNode;
@@ -32,7 +37,7 @@ export const FormField = forwardRef<
   HTMLDivElement,
   FormFieldProps
 >(({ label, error, help, required = false, children }, ref) => {
-  const childProps = (children as any)?.props || {};
+  const childProps = children.props as FormFieldChildProps;
   const id = childProps.id || childProps.name;
   const errorId = error ? `${id}-error` : undefined;
   const helpId = help ? `${id}-help` : undefined;
@@ -48,7 +53,7 @@ export const FormField = forwardRef<
 
       {/* 克隆子元素以添加 aria 属性 */}
       {isValidElement(children)
-        ? cloneElement(children as ReactElement<any>, {
+        ? cloneElement(children as ReactElement<FormFieldChildProps>, {
             'aria-invalid': error ? 'true' : undefined,
             'aria-describedby': [errorId, helpId].filter(Boolean).join(' ') || undefined,
           })

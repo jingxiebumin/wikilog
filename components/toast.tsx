@@ -78,14 +78,13 @@ export function useToast() {
  * 单个 Toast 组件
  */
 interface ToastProps {
-  id: string;
   type: ToastType;
   message: string;
   duration?: number;
   onClose: () => void;
 }
 
-function Toast({ id, type, message, duration = 3000, onClose }: ToastProps) {
+function Toast({ type, message, duration = 3000, onClose }: ToastProps) {
   const [isExiting, setIsExiting] = useState(false);
 
   useEffect(() => {

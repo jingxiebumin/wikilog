@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import Link from 'next/link';
 import { ThemeBackground } from '@/ThemeBackground';
 
 /**
@@ -18,9 +19,9 @@ export function BlogHomePage() {
         <nav>
           <h1>🌿 Wikilog</h1>
           <ul>
-            <li><a href="/">首页</a></li>
-            <li><a href="/blog">博客</a></li>
-            <li><a href="/about">关于</a></li>
+            <li><Link href="/">首页</Link></li>
+            <li><Link href="/blog">博客</Link></li>
+            <li><Link href="/about">关于</Link></li>
           </ul>
         </nav>
       </header>
@@ -38,12 +39,12 @@ export function BlogHomePage() {
           <article className="article-card">
             <h3>React 最佳实践</h3>
             <p>探讨如何编写高效和可维护的 React 代码...</p>
-            <a href="/blog/1">阅读更多 →</a>
+            <Link href="/blog/1">阅读更多 →</Link>
           </article>
           <article className="article-card">
             <h3>CSS 动画性能优化</h3>
             <p>详解如何使用 transform 和 will-change 优化动画性能...</p>
-            <a href="/blog/2">阅读更多 →</a>
+            <Link href="/blog/2">阅读更多 →</Link>
           </article>
         </section>
       </main>
@@ -258,9 +259,9 @@ export function BlogPostPage() {
           <div className="sidebar-widget">
             <h3>相关文章</h3>
             <ul>
-              <li><a href="/blog/2">CSS 动画性能优化</a></li>
-              <li><a href="/blog/3">TypeScript 入门指南</a></li>
-              <li><a href="/blog/4">Web 性能优化</a></li>
+              <li><Link href="/blog/2">CSS 动画性能优化</Link></li>
+              <li><Link href="/blog/3">TypeScript 入门指南</Link></li>
+              <li><Link href="/blog/4">Web 性能优化</Link></li>
             </ul>
           </div>
         </aside>

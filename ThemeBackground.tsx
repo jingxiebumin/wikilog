@@ -126,6 +126,7 @@ const PelicanBicycle: React.FC<{ className: string; animated: boolean }> = ({
 }) => (
   <svg
     className={className}
+    style={{ animation: animated ? undefined : 'none' }}
     viewBox="-20 -10 240 170"
     preserveAspectRatio="xMidYMid meet"
   >

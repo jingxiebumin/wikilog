@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent, useEffect, useRef } from "react";
+import { useCallback, useState, type FormEvent, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { CircleUserRound } from "lucide-react";
@@ -83,7 +83,7 @@ export function PersonalCenter({ initialProfile, activeTab = "basic", forcePassw
     setNotice("");
   }
 
-  function closeAvatarDialog() {
+  const closeAvatarDialog = useCallback(() => {
     if (avatarPreview) URL.revokeObjectURL(avatarPreview);
     setAvatarPreview("");
     setAvatarFile(undefined);
@@ -93,7 +93,7 @@ export function PersonalCenter({ initialProfile, activeTab = "basic", forcePassw
     setTimeout(() => {
       avatarButtonRef.current?.focus();
     }, 0);
-  }
+  }, [avatarPreview]);
 
   // 对话框打开时的焦点管理
   useEffect(() => {
@@ -120,7 +120,7 @@ export function PersonalCenter({ initialProfile, activeTab = "basic", forcePassw
       dialog.addEventListener("keydown", handleDialogKeyDown);
       return () => dialog.removeEventListener("keydown", handleDialogKeyDown);
     }
-  }, [avatarOpen]);
+  }, [avatarOpen, closeAvatarDialog]);
 
   async function uploadAvatar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

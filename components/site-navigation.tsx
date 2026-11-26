@@ -73,19 +73,17 @@ export function SiteNavigation({
     }
   };
 
+  const toggleAccountMenu = () => {
+    if (!accountMenuOpen) setFocusedMenuItemIndex(0);
+    setAccountMenuOpen(!accountMenuOpen);
+  };
+
   // 焦点管理
   useEffect(() => {
     if (accountMenuOpen && menuItemsRef.current[focusedMenuItemIndex]) {
       menuItemsRef.current[focusedMenuItemIndex].focus();
     }
   }, [focusedMenuItemIndex, accountMenuOpen]);
-
-  // 菜单打开时自动焦焦到第一项
-  useEffect(() => {
-    if (accountMenuOpen) {
-      setFocusedMenuItemIndex(0);
-    }
-  }, [accountMenuOpen]);
 
   // 点击外部关闭菜单
   useEffect(() => {
@@ -125,7 +123,7 @@ export function SiteNavigation({
             aria-expanded={accountMenuOpen}
             aria-haspopup="menu"
             className="account-menu-trigger"
-            onClick={() => setAccountMenuOpen((current) => !current)}
+            onClick={toggleAccountMenu}
             type="button"
           >
             {avatarUnavailable ? (
