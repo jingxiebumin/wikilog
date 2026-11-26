@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowUpRight, BookOpenText } from "lucide-react";
+import Image from "next/image";
+import { ArrowUpRight } from "lucide-react";
 import { SearchForm } from "@/components/search-form";
 import { SiteNavigation } from "@/components/site-navigation";
 import { BackToTop } from "@/components/back-to-top";
@@ -12,7 +13,7 @@ export async function SiteShell({ children }: { children: React.ReactNode }) {
       <div className="main-column">
         <header className="topbar">
           <Link aria-label="Wikilog 首页" className="brand" href="/">
-            <span className="brand-mark"><BookOpenText aria-hidden="true" size={20} /></span>
+            <span className="brand-mark"><Image alt="" className="brand-logo" height={32} priority src="/logo.png" width={32} /></span>
             <span className="brand-word">wikilog<span>.</span></span>
           </Link>
           <SiteNavigation accountAvailable={publicAuthEnabled} session={session} />

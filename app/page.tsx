@@ -16,16 +16,16 @@ export default async function HomePage() {
     <div className="page home-page">
       <div className="home-intro">
         <div>
-          <p className="eyebrow"><span className="eyebrow-mark" /> 个人技术日志 <span className="eyebrow-year">2026 / 持续更新</span></p>
+          <p className="eyebrow text-xs font-medium tracking-wide text-zinc-600"><span className="eyebrow-mark" /> 个人技术日志 <span className="eyebrow-year">2026 / 持续更新</span></p>
           <h1>把问题写清楚，<br /><em>让经验留下来。</em></h1>
         </div>
-        <p className="home-intro-copy">记录工程实践、数据检索与系统设计中的具体问题。少一点结论先行，多一点过程和依据。</p>
+        <p className="home-intro-copy text-zinc-700">记录工程实践、数据检索与系统设计中的具体问题。少一点结论先行，多一点过程和依据。</p>
       </div>
 
       <div className="home-layout">
         <section className="home-main" aria-labelledby="latest-heading">
           <div className="section-heading">
-            <div><p className="section-index">01 / 文章</p><h2 id="latest-heading">全部文章</h2></div>
+            <div><p className="section-index text-xs font-medium tracking-wide text-zinc-600">01 / 文章</p><h2 id="latest-heading">全部文章</h2></div>
             <span className="result-count">{String(page.totalCount).padStart(2, "0")} 篇</span>
           </div>
           {page.totalCount ? <PublicArticleList initialPage={{ ...page, hasMore: page.articles.length < page.totalCount }} categories={categories} tags={tags} /> : (
@@ -42,17 +42,17 @@ export default async function HomePage() {
         <aside className="home-aside">
           <section className="aside-section" aria-labelledby="topics-heading">
             <div className="aside-heading">
-              <span className="section-index">02 / 主题</span>
+              <span className="section-index text-xs font-medium tracking-wide text-zinc-600">02 / 主题</span>
               <Link aria-label="查看全部分类" href="/categories" title="查看全部分类"><ArrowUpRight size={16} /></Link>
             </div>
             <h2 id="topics-heading">从这里开始</h2>
             <div className="topic-list">
               {categories.map((category, index) => {
                 return (
-                  <Link className="topic-row" href={`/categories/${category.slug}`} key={category.slug}>
-                    <span className={`topic-number tone-${category.tone}`}>{String(index + 1).padStart(2, "0")}</span>
+                  <Link className="topic-row group" href={`/categories/${category.slug}`} key={category.slug}>
+                    <span className={`topic-number tone-${category.tone} bg-emerald-900/10 text-[#1B4332]`}>{String(index + 1).padStart(2, "0")}</span>
                     <span className="topic-name">{category.name}</span>
-                    <ArrowUpRight aria-hidden="true" className="topic-arrow" size={15} />
+                    <ArrowUpRight aria-hidden="true" className="topic-arrow ml-auto text-zinc-400 group-hover:text-[#1B4332] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" size={15} />
                   </Link>
                 );
               })}
@@ -61,7 +61,7 @@ export default async function HomePage() {
 
           <section className="aside-section aside-tags" aria-labelledby="tags-heading">
             <div className="aside-heading">
-              <span className="section-index">03 / 关键词</span>
+              <span className="section-index text-xs font-medium tracking-wide text-zinc-600">03 / 关键词</span>
               <Link aria-label="查看全部标签" href="/tags" title="查看全部标签"><ArrowUpRight size={16} /></Link>
             </div>
             <h2 id="tags-heading">最近在写</h2>

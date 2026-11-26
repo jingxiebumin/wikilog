@@ -5,11 +5,19 @@
 .graphScroll {
   max-width: 100%;
   overflow: auto;
-  padding: 5px 0 10px;
+  padding: 18px;
+  background-color: rgb(255 255 255 / 68%);
+  background-image: radial-gradient(rgb(71 85 105 / 20%) 0.8px, transparent 0.8px);
+  background-size: 16px 16px;
+  border: 1px solid rgb(255 255 255 / 70%);
+  border-radius: 14px;
+  box-shadow: 0 14px 34px rgb(31 41 55 / 8%);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
 }
 
 .graphScroll:focus-visible {
-  outline: 3px solid var(--coral);
+  outline: 3px solid rgb(27 67 50 / 30%);
   outline-offset: 3px;
 }
 
@@ -23,7 +31,7 @@
 }
 
 .edges line {
-  stroke: var(--line-strong);
+  stroke: #94a3b8;
   stroke-width: 2;
 }
 
@@ -54,10 +62,10 @@
   flex: 0 0 9px;
   width: 9px;
   aspect-ratio: 1;
-  background: var(--coral);
+  background: #1b4332;
   border: 2px solid var(--paper);
   border-radius: 50%;
-  outline: 1px solid var(--coral);
+  outline: 1px solid #1b4332;
 }
 
 .empty {
@@ -126,5 +134,5 @@
 }
 
 .topicLinks a:hover {
-  color: var(--coral);
+  color: #1b4332;
 }

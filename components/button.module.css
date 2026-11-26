@@ -70,11 +70,11 @@
 }
 
 .variant-danger:hover:not(.disabled) {
-  background: #c94c38;
+  background: #163d2d;
 }
 
 .variant-danger:active:not(.disabled) {
-  background: #b53d2a;
+  background: #102f23;
 }
 
 /* 变体 - ghost (透明) */
@@ -118,6 +118,6 @@
 
 /* 焦点指示 */
 .button:focus-visible {
-  outline: 3px solid var(--coral);
+  outline: 3px solid rgb(27 67 50 / 30%);
   outline-offset: 3px;
 }
